@@ -564,7 +564,7 @@ class WinthorClient:
             raise Exception("Nenhum item válido gerado após validação e conversão.")
 
         # 3. Montar Payload Final
-        sale_type = 5 if self.is_bonificacao else 1  # Req 8: Bonificação
+        sale_type = 5 if pedido_validado.get('is_bonificacao') else 1  # Req 8: Bonificação
 
         payload = {
             "branchId": str(self.branch_id),

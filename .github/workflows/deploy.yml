@@ -1,0 +1,24 @@
+name: Deploy no Servidor Oracle
+
+on:
+  push:
+    branches:
+      - main  # Executa sempre que houver push na main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Executar script de deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            cd /home/ubuntu/docker-pdf-winthor
+            git fetch origin main
+            git reset --hard origin/main
+            # Se usar Docker, você pode adicionar comandos extras aqui:
+            docker-compose up -d --build

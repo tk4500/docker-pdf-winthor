@@ -580,7 +580,7 @@ class WinthorClient:
 
         # 4. Enviar
         logger.info(
-            f"Enviando pedido Winthor (Bonif={self.is_bonificacao}). Itens: {len(itens_winthor)}"
+            f"Enviando pedido Winthor (Bonif={pedido_validado.get('is_bonificacao')}). Itens: {len(itens_winthor)}"
         )
         try:
             response = self.session.post(url, json=payload)

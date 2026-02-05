@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # --- Banco de Dados ---
+  db:
+    image: postgres:15-alpine
+    container_name: winthor_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # --- Inteligência Artificial (Ollama) ---
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: winthor_ollama
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+    # No Windows/Mac sem GPU dedicada exposta, rodará na CPU (funcional para testes)
+
+  # --- Backend (Sua Aplicação) ---
+  backend:
+    build: .
+    container_name: winthor_backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      #- ollama
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app  # Permite editar código no Windows e atualizar no Docker na hora
+
+volumes:
+  postgres_data:
+#  ollama_data:

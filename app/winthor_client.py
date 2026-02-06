@@ -323,6 +323,7 @@ class WinthorClient:
                         cliente_db.razao_social = cust_data.get("name")
                         cliente_db.plano_pag_padrao = cust_data.get("paymentPlanId")
                         cliente_db.sellerId = cust_data.get("sellerId")
+                        cliente_db.chargingId = cust_data.get("chargingId")  # Novo campo de cobrança
                         self.db.commit()
                 # # --- 2. MINERAR PRODUTOS ---
                 # itens = pedido_data.get("listOfOrderItem", [])
@@ -479,6 +480,7 @@ class WinthorClient:
         if not cliente_db:
             raise Exception(f"Cliente {id_cliente} não encontrado no banco local.")
 
+        chargingId = cliente_dados.get("chargingId") if cliente_dados.get("chargingId") else cliente_db.chargingId
         sellerId = cliente_db.sellerId if cliente_db.sellerId else 0
         plano_pag = cliente_db.plano_pag_padrao if cliente_db.plano_pag_padrao else 1
 
@@ -570,6 +572,7 @@ class WinthorClient:
             "branchId": str(self.branch_id),
             "customer": {"id": int(id_cliente)},
             "saleOrigin": "F",
+            "chargingId": chargingId,
             "saleType": sale_type,
             "paymentPlanId": int(plano_pag),
             "createData": data_atual,

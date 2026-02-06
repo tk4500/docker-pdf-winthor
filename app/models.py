@@ -52,6 +52,7 @@ class Cliente(Base):
     razao_social = Column(String)
     plano_pag_padrao = Column(Integer)
     sellerId = Column(Integer) # Vendedor padrão no Winthor
+    chargingId = Column(String) # ID de cobrança no Winthor
     
     aliases = relationship("ProdutoAlias", back_populates="cliente")
 

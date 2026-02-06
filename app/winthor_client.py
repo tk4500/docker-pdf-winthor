@@ -323,7 +323,7 @@ class WinthorClient:
                         cliente_db.razao_social = cust_data.get("name")
                         cliente_db.plano_pag_padrao = cust_data.get("paymentPlanId")
                         cliente_db.sellerId = cust_data.get("sellerId")
-                        cliente_db.chargingId = cust_data.get("chargingId")  # Novo campo de cobrança
+                        cliente_db.chargingId = pedido_data.get("chargingId")  # Novo campo de cobrança
                         self.db.commit()
                 # # --- 2. MINERAR PRODUTOS ---
                 # itens = pedido_data.get("listOfOrderItem", [])

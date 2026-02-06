@@ -60,7 +60,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
 
 # --- Dependência Apenas para Admin ---
 async def get_current_admin(current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
+    if current_user.role_id != 1:
         raise HTTPException(
             status_code=403, 
             detail="Permissão insuficiente. Apenas administradores."

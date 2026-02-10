@@ -64,10 +64,15 @@ class OrderValidator:
             
             # A. Busca Produto (Ordem: EAN -> Alias -> CodigoRef)
             ean = "".join(filter(str.isdigit, str(item.get('ean', ''))))
+            id = item.get('id_produto_winthor', '')
             cod_ref = str(item.get('codigo_referencia', ''))
-            
-            # Tenta EAN na tabela Produto
-            prod_db = self.db.query(Produto).filter(Produto.ean == ean).first() if ean else None
+            prod_db = None
+
+            if not id:
+                # Tenta EAN na tabela Produto
+                prod_db = self.db.query(Produto).filter(Produto.ean == ean).first() if ean else None
+            else
+                prod_db = self.db.query(Produto).filter(Produto.id == id).first() if ean else None
             
             if prod_db:
                 id_produto_winthor = prod_db.id

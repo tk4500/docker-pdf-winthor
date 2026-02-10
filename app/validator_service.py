@@ -71,7 +71,7 @@ class OrderValidator:
             if not id:
                 # Tenta EAN na tabela Produto
                 prod_db = self.db.query(Produto).filter(Produto.ean == ean).first() if ean else None
-            else
+            else:
                 prod_db = self.db.query(Produto).filter(Produto.id == id).first() if ean else None
             
             if prod_db:

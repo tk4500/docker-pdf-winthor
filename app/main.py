@@ -175,7 +175,7 @@ def criar_pedido_manual(
     json_manual = {
         "dados_cliente": {"id_winthor": dados.cliente_id}, # Validador vai enriquecer
         "produtos": produtos_mock,
-        "totais": {"pdf": sum(item['valor_total'] for item in produtos_mock)}
+        "total_pedido_validacao": sum(item['valor_total'] for item in produtos_mock)
     }
     
     # Chama validação (síncrona para manual)

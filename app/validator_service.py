@@ -64,7 +64,7 @@ class OrderValidator:
             
             # A. Busca Produto (Ordem: EAN -> Alias -> CodigoRef)
             ean = "".join(filter(str.isdigit, str(item.get('ean', ''))))
-            id = item.get('id_produto_winthor', '')
+            id = "".join(filter(str.isdigit, str(item.get('id_produto_winthor', ''))))
             cod_ref = str(item.get('codigo_referencia', ''))
             prod_db = None
 
@@ -87,6 +87,9 @@ class OrderValidator:
                     if alias_db:
                         id_produto_winthor = alias_db.id_produto
                         item_msgs.append("Produto encontrado via Alias/De-Para")
+
+            if id:
+                id_produto_winthor = id;
             
             if not id_produto_winthor:
                 item_status = "NAO_ENCONTRADO"

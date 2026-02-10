@@ -168,7 +168,7 @@ def criar_pedido_manual(
         produtos_mock.append({
             "id_produto_winthor": item['id_produto'], # Já vem com ID
             "quantidade_total": item['quantidade'],
-            "valor_unitario": 0 # Será buscado na validação ou passado manual
+            "valor_unitario": item['valor']
         })
         
     json_manual = {

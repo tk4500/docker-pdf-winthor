@@ -87,6 +87,45 @@ class WinthorClient:
                 logger.error(f"Erro ao buscar EAN do produto {produto_id}: {e}")
                 return None
 
+    def _get_customer_to_chargingId(self):
+        logger.info("Buscando clientes para mapear chargingId...")
+        if not self.token:
+            self.authenticate()
+        url = f"{self.base_url}/api/wholesale/v1/orders/list"
+        params = {
+            "branchId": self.branch_id,
+            "page": 1,
+            "pageSize": 100,
+            "daysOfSearch": 100,
+            "order": "lastChange",
+            "orderStatus": "F",
+            "saleOrigin": "T",
+            "viewDocument": False,
+        }
+        hasNext = True
+        clientes_charging = {}
+        while hasNext:
+            try:
+                response = self.session.get(url, params=params)
+                if response.status_code == 401:
+                    self.authenticate()
+                    response = self.session.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+                logger.info(f"Página {params['page']} de pedidos retornada para mapear chargingId.")
+                lista = data if isinstance(data, list) else data.get("items", [])
+                for pedido in lista:
+                    cliente = pedido.get("customer", {})
+                    if cliente:
+                        c_id = cliente.get("id")
+                        chargingId = pedido.get("chargingId")
+                        if not clientes_charging.get(c_id) and chargingId:
+                            clientes_charging[c_id] = chargingId
+            except Exception as e:
+                logger.error(f"Erro ao buscar pedidos para mapear chargingId: {e}")
+                break
+        return clientes_charging
+
     def _get_charging_id(self, cliente_id: int):
         logger.info(f"Buscando chargingId para cliente {cliente_id}...")
         if not self.token:
@@ -137,6 +176,7 @@ class WinthorClient:
         total_upserted = 0
 
         url = f"{self.base_url}/api/wholesale/v1/customer/list"
+        costumers_charging = self._get_customer_to_chargingId()
 
         while hasNext:
             params = {
@@ -181,7 +221,7 @@ class WinthorClient:
                             cliente_db.razao_social = item.get("name")
                             cliente_db.plano_pag_padrao = item.get("paymentPlanId")
                             cliente_db.sellerId = item.get("sellerId")
-                            cliente_db.chargingId = cliente_db.chargingId if cliente_db.chargingId else self._get_charging_id(c_id)
+                            cliente_db.chargingId = cliente_db.chargingId if cliente_db.chargingId else costumers_charging.get(c_id) if costumers_charging.get(c_id) else self._get_charging_id(c_id)
                             cliente_db.regionId = item.get("regionId")
                             self.db.commit()
                         else:

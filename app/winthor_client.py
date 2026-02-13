@@ -112,7 +112,9 @@ class WinthorClient:
                     response = self.session.get(url, params=params)
                 response.raise_for_status()
                 data = response.json()
-                logger.info(f"Página {params['page']} de pedidos retornada para mapear chargingId.")
+                logger.info(
+                    f"Página {params['page']} de pedidos retornada para mapear chargingId."
+                )
                 lista = data if isinstance(data, list) else data.get("items", [])
                 for pedido in lista:
                     cliente = pedido.get("customer", {})
@@ -130,7 +132,7 @@ class WinthorClient:
         logger.info(f"Buscando chargingId para cliente {cliente_id}...")
         if not self.token:
             self.authenticate()
-            
+
         url = f"{self.base_url}/api/wholesale/v1/orders/list"
         params = {
             "branchId": self.branch_id,
@@ -151,17 +153,30 @@ class WinthorClient:
                     response = self.session.get(url, params=params)
                 response.raise_for_status()
                 data = response.json()
-                logger.info(f"Página {params['page']} de pedidos retornada para busca de chargingId.")
+                logger.info(
+                    f"Página {params['page']} de pedidos retornada para busca de chargingId."
+                )
                 lista = data if isinstance(data, list) else data.get("items", [])
-                
-                ped = next((pedido for pedido in lista if pedido.get("customer", {}).get("id") == cliente_id), None)
+
+                ped = next(
+                    (
+                        pedido
+                        for pedido in lista
+                        if pedido.get("customer", {}).get("id") == cliente_id
+                    ),
+                    None,
+                )
                 if ped:
                     chargingId = ped.get("chargingId")
-                    logger.info(f"chargingId encontrado para cliente {cliente_id}: {chargingId}")
+                    logger.info(
+                        f"chargingId encontrado para cliente {cliente_id}: {chargingId}"
+                    )
                     return chargingId
 
                 params["page"] += 1
-                hasNext = data.get("hasNext") or (len(lista) > 0)  # Continua se tiver next ou se ainda tiver itens (fallback)
+                hasNext = data.get("hasNext") or (
+                    len(lista) > 0
+                )  # Continua se tiver next ou se ainda tiver itens (fallback)
             except Exception as e:
                 logger.error(f"Erro ao buscar pedidos para cliente {cliente_id}: {e}")
         return 341  # Retorna ID de cobrança padrão se não encontrar nenhum pedido do cliente
@@ -183,7 +198,7 @@ class WinthorClient:
                 "branchId": self.branch_id,
                 "page": page,
                 "pageSize": page_size,
-                "withDeliveryAddress": False,  
+                "withDeliveryAddress": False,
             }
 
             try:
@@ -197,7 +212,9 @@ class WinthorClient:
 
                 # Adaptação para caso venha lista direta ou objeto com items
                 lista = data if isinstance(data, list) else data.get("items", [])
-                logger.info(f"Sync Clientes - Página {page} retornou {len(lista)} itens.")
+                logger.info(
+                    f"Sync Clientes - Página {page} retornou {len(lista)} itens."
+                )
                 if not lista:
                     hasNext = False
                     break
@@ -221,7 +238,15 @@ class WinthorClient:
                             cliente_db.razao_social = item.get("name")
                             cliente_db.plano_pag_padrao = item.get("paymentPlanId")
                             cliente_db.sellerId = item.get("sellerId")
-                            cliente_db.chargingId = cliente_db.chargingId if cliente_db.chargingId else costumers_charging.get(c_id) if costumers_charging.get(c_id) else self._get_charging_id(c_id)
+                            cliente_db.chargingId = (
+                                cliente_db.chargingId
+                                if cliente_db.chargingId
+                                else (
+                                    costumers_charging.get(c_id)
+                                    if costumers_charging.get(c_id)
+                                    else self._get_charging_id(c_id)
+                                )
+                            )
                             cliente_db.regionId = item.get("regionId")
                             self.db.commit()
                         else:
@@ -270,7 +295,12 @@ class WinthorClient:
         url = f"{self.base_url}/api/purchases/v1/products/"
 
         while hasNext:
-            params = {"branchId": self.branch_id, "page": page, "pageSize": page_size, "callOrigin": "T"}
+            params = {
+                "branchId": self.branch_id,
+                "page": page,
+                "pageSize": page_size,
+                "callOrigin": "T",
+            }
 
             try:
                 response = self.session.get(url, params=params)
@@ -281,7 +311,9 @@ class WinthorClient:
                 response.raise_for_status()
                 data = response.json()
                 lista = data if isinstance(data, list) else data.get("items", [])
-                logger.info(f"Sync Produtos - Página {page} retornou {len(lista)} itens.")
+                logger.info(
+                    f"Sync Produtos - Página {page} retornou {len(lista)} itens."
+                )
                 if not lista:
                     hasNext = False
                     break
@@ -408,7 +440,9 @@ class WinthorClient:
                         cliente_db.razao_social = cust_data.get("name")
                         cliente_db.plano_pag_padrao = cust_data.get("paymentPlanId")
                         cliente_db.sellerId = cust_data.get("sellerId")
-                        cliente_db.chargingId = pedido_data.get("chargingId")  # Novo campo de cobrança
+                        cliente_db.chargingId = pedido_data.get(
+                            "chargingId"
+                        )  # Novo campo de cobrança
                         self.db.commit()
                 # # --- 2. MINERAR PRODUTOS ---
                 # itens = pedido_data.get("listOfOrderItem", [])
@@ -565,7 +599,11 @@ class WinthorClient:
         if not cliente_db:
             raise Exception(f"Cliente {id_cliente} não encontrado no banco local.")
 
-        chargingId = cliente_dados.get("chargingId") if cliente_dados.get("chargingId") else cliente_db.chargingId
+        chargingId = (
+            cliente_dados.get("chargingId")
+            if cliente_dados.get("chargingId")
+            else cliente_db.chargingId
+        )
         sellerId = cliente_db.sellerId if cliente_db.sellerId else 0
         plano_pag = cliente_db.plano_pag_padrao if cliente_db.plano_pag_padrao else 1
 
@@ -651,7 +689,9 @@ class WinthorClient:
             raise Exception("Nenhum item válido gerado após validação e conversão.")
 
         # 3. Montar Payload Final
-        sale_type = 5 if pedido_validado.get('is_bonificacao') else 1  # Req 8: Bonificação
+        sale_type = (
+            5 if pedido_validado.get("is_bonificacao") else 1
+        )  # Req 8: Bonificação
 
         payload = {
             "branchId": str(self.branch_id),

@@ -96,7 +96,7 @@ class WinthorClient:
             "branchId": self.branch_id,
             "page": 1,
             "pageSize": 100,
-            "daysOfSearch": 100,
+            "daysOfSearch": 365,
             "order": "lastChange",
             "orderStatus": "F",
             "saleOrigin": "T",
@@ -122,7 +122,8 @@ class WinthorClient:
                         c_id = cliente.get("id")
                         chargingId = pedido.get("chargingId")
                         if not clientes_charging.get(c_id) and chargingId:
-                            clientes_charging[c_id] = chargingId
+                            if chargingId != "BNF":
+                                clientes_charging[c_id] = chargingId
                 params["page"] += 1
                 hasNext = data.get("hasNext") or (len(lista) > 0)
             except Exception as e:
@@ -138,9 +139,9 @@ class WinthorClient:
         url = f"{self.base_url}/api/wholesale/v1/orders/list"
         params = {
             "branchId": self.branch_id,
-            "page": 1,
+            "page": 36,
             "pageSize": 100,
-            "daysOfSearch": 365,
+            "daysOfSearch": 1000,
             "order": "lastChange",
             "orderStatus": "F",
             "saleOrigin": "T",
@@ -164,7 +165,7 @@ class WinthorClient:
                     (
                         pedido
                         for pedido in lista
-                        if pedido.get("customer", {}).get("id") == cliente_id
+                        if pedido.get("customer", {}).get("id") == cliente_id and pedido.get("chargingId") != "BNF"
                     ),
                     None,
                 )

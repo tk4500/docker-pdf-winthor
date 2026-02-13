@@ -8,6 +8,7 @@ logger = logging.getLogger("Validator")
 class OrderValidator:
     def __init__(self, db: Session):
         self.db = db
+        self.winthor_client = WinthorClient(db) 
 
     def validar_lote_pedidos(self, dados_parsed: dict) -> dict:
         """
@@ -107,7 +108,7 @@ class OrderValidator:
                 if qtd > 0:
                     vlr_unit_impl = vlr_total_pdf / qtd
                     aceitavel = False
-                    vlr_padrao = WinthorClient.get_price_from_id(id_produto_winthor, client_id)
+                    vlr_padrao = self.winthor_client.get_price_from_id(id_produto_winthor, client_id)
                     if vlr_padrao:
                         variacao = abs(vlr_unit_impl - vlr_padrao) / vlr_padrao
                         if variacao <= 0.40:  # Até 40% de variação aceitável
@@ -115,7 +116,7 @@ class OrderValidator:
                     else:
                         inteiritude = vlr_total_pdf / vlr_unit
                         variacao = abs(inteiritude - round(inteiritude)) / round(inteiritude) if round(inteiritude) > 0 else 1
-                        if variacao <= 0.05:  # Até 5% de variação aceitável para inteiritude
+                        if variacao <= 0.01:  # Até 1% de variação aceitável para inteiritude
                             aceitavel = True
                     if aceitavel:
                         vlr_unit = round(vlr_unit_impl, 2)

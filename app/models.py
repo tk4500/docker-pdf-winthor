@@ -31,6 +31,7 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
+    email = Column(String)
     
     # Agora o usuário aponta para uma Role
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)

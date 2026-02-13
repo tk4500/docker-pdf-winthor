@@ -91,7 +91,7 @@ class WinthorClient:
         if not self.token:
             self.authenticate()
 
-        page = 0
+        page = 1
         page_size = 50
         hasNext = True
         total_upserted = 0
@@ -182,7 +182,7 @@ class WinthorClient:
         if not self.token:
             self.authenticate()
 
-        page = 0
+        page = 1
         page_size = 50
         hasNext = True
         total_upserted = 0

@@ -88,6 +88,7 @@ class WinthorClient:
                 return None
 
     def _get_charging_id(self, cliente_id: int):
+        logger.info(f"Buscando chargingId para cliente {cliente_id}...")
         if not self.token:
             self.authenticate()
             

@@ -87,6 +87,43 @@ class WinthorClient:
                 logger.error(f"Erro ao buscar EAN do produto {produto_id}: {e}")
                 return None
 
+    def _get_charging_id(self, cliente_id: int):
+        if not self.token:
+            self.authenticate()
+            
+        url = f"{self.base_url}/api/wholesale/v1/orders/list"
+        params = {
+            "branchId": self.branch_id,
+            "page": 1,
+            "pageSize": 100,
+            "daysOfSearch": 365,
+            "order": "lastChange",
+            "orderStatus": "F",
+            "saleOrigin": "T",
+            "viewDocument": False,
+        }
+        hasNext = True
+        while hasNext:
+            try:
+                response = self.session.get(url, params=params)
+                if response.status_code == 401:
+                    self.authenticate()
+                    response = self.session.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+                lista = data if isinstance(data, list) else data.get("items", [])
+                for pedido in lista:
+                    cust_data = pedido.get("customer", {})
+                    c_id = cust_data.get("id")
+                    if c_id == cliente_id:
+                        chargingId = pedido.get("chargingId")
+                        return chargingId
+                params["page"] += 1
+                hasNext = data.get("hasNext") or (len(lista) > 0)  # Continua se tiver next ou se ainda tiver itens (fallback)
+            except Exception as e:
+                logger.error(f"Erro ao buscar pedidos para cliente {cliente_id}: {e}")
+        return 341  # Retorna ID de cobrança padrão se não encontrar nenhum pedido do cliente
+
     def sync_clientes(self):
         if not self.token:
             self.authenticate()
@@ -141,6 +178,7 @@ class WinthorClient:
                             cliente_db.razao_social = item.get("name")
                             cliente_db.plano_pag_padrao = item.get("paymentPlanId")
                             cliente_db.sellerId = item.get("sellerId")
+                            cliente_db.chargingId = cliente_db.chargingId if cliente_db.chargingId else self._get_charging_id(c_id)
                             cliente_db.regionId = item.get("regionId")
                             self.db.commit()
                         else:
@@ -210,7 +248,7 @@ class WinthorClient:
                         p_id = int(item.get("id"))
 
                         # Tenta pegar EAN de varios lugares
-                        ean = str(item.get("gtin") or item.get("auxiliaryCode") or "")
+                        ean = str(item.get("barCode") or "")
 
                         produto_db = (
                             self.db.query(Produto).filter(Produto.id == p_id).first()
@@ -218,17 +256,17 @@ class WinthorClient:
 
                         if produto_db:
                             # Update
-                            produto_db.nome = item.get("description")
+                            produto_db.nome = item.get("name") or item.get("title")
                             produto_db.ean = ean
-                            produto_db.unidade = item.get("unit") or "UN"
+                            produto_db.unidade = item.get("unity") or "UN"
                             self.db.commit()
                         else:
                             # Insert
                             novo_prod = Produto(
                                 id=p_id,
-                                nome=item.get("description"),
+                                nome=item.get("name") or item.get("title"),
                                 ean=ean,
-                                unidade=item.get("unit") or "UN",
+                                unidade=item.get("unity") or "UN",
                             )
                             self.db.add(novo_prod)
 

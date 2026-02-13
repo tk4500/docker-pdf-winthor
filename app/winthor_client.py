@@ -767,3 +767,40 @@ class WinthorClient:
         except Exception as e:
             logger.error(f"Falha ao cancelar pedido {winthor_order_id}: {e}")
             raise e
+    def get_price_from_id(self, produto_id: int, customer_id: int):
+        if self.token is None:
+            self.authenticate()
+        costumer_db = self.db.query(Cliente).filter(Cliente.id == customer_id).first()
+        if not costumer_db:
+            logger.error(f"Cliente {customer_id} não encontrado no banco local.")
+            return None
+        regionId = costumer_db.regionId
+        url = f"{self.base_url}/api/wholesale/v1/price/list"
+        params = {
+            "branchId": self.branch_id,
+            "productSKUERPReferenceKey": produto_id,
+            "multiRegionPrice": True,            
+        }
+        try:
+            response = self.session.get(url, params=params)
+            if response.status_code == 401:
+                self.authenticate()
+                response = self.session.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            lista = data if isinstance(data, list) else data.get("items", [])
+            price = next(
+                (
+                    preco
+                    for preco in lista
+                    if preco.get("priceRegion") == regionId
+                ),
+                None,
+            )
+            if price:
+                return price.get("price")
+            else:
+                return lista[0].get("price") if len(lista) > 0 else None
+        except Exception as e:
+            logger.error(f"Erro ao buscar preço do produto {produto_id}: {e}")
+            return None

@@ -6,6 +6,7 @@ from sqlalchemy import cast, String, or_
 from datetime import datetime, timedelta
 from fastapi import Form 
 # Imports Locais
+from app.validator_service import OrderValidator
 import models
 import schemas
 from database import engine, get_db
@@ -275,7 +276,14 @@ def finalizar_pedido(
 ):
     job = db.query(models.ProcessamentoPedido).filter(models.ProcessamentoPedido.id == job_id).first()
     if not job: raise HTTPException(status_code=404, detail="Job não encontrado")
-
+    validator = OrderValidator(db)
+    retorno = validator._validar_pedido_individual(payload.pedido) # Revalida para garantir que o que está sendo enviado é válido
+    if retorno['status_pedido'] != "VALIDO":
+        job.status_global = "REVALIDACAO_FALHOU"
+        job.mensagem_erro = f"Revalidação falhou: Status {retorno['status_pedido']}"
+        job.pedido = retorno
+        db.commit()
+        raise HTTPException(status_code=400, detail=f"Pedido não passou na revalidação final: {retorno['status_pedido']}")
     try:
         msg_aprendizado = aprender_aliases(db, job_id, payload.pedido)
         client = WinthorClient(db)

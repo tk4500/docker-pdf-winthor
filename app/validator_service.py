@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from models import Produto, ProdutoAlias, Cliente
 import logging
+from winthor_client import WinthorClient
 
 logger = logging.getLogger("Validator")
 
@@ -39,11 +40,12 @@ class OrderValidator:
         """Processa um único pedido e seus itens"""
         erros_pedido = []
         itens_validados = []
-        
+        if pedido.get('dados_cliente'):
+            cliente_db = self.db.query(Cliente).filter(Cliente.id == pedido['dados_cliente'].get('id_winthor')).first()
+        else:
+            cnpj_cliente = "".join(filter(str.isdigit, pedido.get('cliente', {}).get('cnpj_cpf', '')))
+            cliente_db = self.db.query(Cliente).filter(Cliente.cnpj_cpf == cnpj_cliente).first()
         # 1. Validar Cliente
-        cnpj_cliente = "".join(filter(str.isdigit, pedido.get('cliente', {}).get('cnpj_cpf', '')))
-        cliente_db = self.db.query(Cliente).filter(Cliente.cnpj_cpf == cnpj_cliente).first()
-        
         info_cliente = {
             "encontrado": bool(cliente_db),
             "id_winthor": cliente_db.id if cliente_db else None,
@@ -61,40 +63,34 @@ class OrderValidator:
             item_status = "OK"
             item_msgs = []
             id_produto_winthor = None
+            prod_db = None
             
             # A. Busca Produto (Ordem: EAN -> Alias -> CodigoRef)
             ean = "".join(filter(str.isdigit, str(item.get('ean', ''))))
-            id = "".join(filter(str.isdigit, str(item.get('id_produto_winthor', ''))))
+            id_raw = "".join(filter(str.isdigit, str(item.get('id_produto_winthor', ''))))
             cod_ref = str(item.get('codigo_referencia', ''))
-            prod_db = None
-
-            if not id:
-                # Tenta EAN na tabela Produto
-                prod_db = self.db.query(Produto).filter(Produto.ean == ean).first() if ean else None
-            else:
-                prod_db = self.db.query(Produto).filter(Produto.id == id).first() if ean else None
             
+            
+            if id_raw:
+                prod_db = self.db.query(Produto).filter(Produto.id == int(id_raw)).first()
+            if not prod_db and ean:
+                prod_db = self.db.query(Produto).filter(Produto.ean == ean).first()
+
+            if not prod_db and cliente_db:
+                alias_db = self.db.query(ProdutoAlias).filter(
+                    ProdutoAlias.id_cliente == cliente_db.id,
+                    ProdutoAlias.codigo_cliente == cod_ref
+                ).first()
+                if alias_db:
+                    prod_db = self.db.query(Produto).filter(Produto.id == alias_db.id_produto).first()
+                    item_msgs.append("Produto encontrado via Alias")
+
             if prod_db:
                 id_produto_winthor = prod_db.id
             else:
-                # Tenta Alias (se tivermos o cliente identificado)
-                if cliente_db:
-                    alias_db = self.db.query(ProdutoAlias).filter(
-                        ProdutoAlias.id_cliente == cliente_db.id,
-                        ProdutoAlias.codigo_cliente == cod_ref
-                    ).first()
-                    
-                    if alias_db:
-                        id_produto_winthor = alias_db.id_produto
-                        item_msgs.append("Produto encontrado via Alias/De-Para")
-
-            if id:
-                id_produto_winthor = id;
-            
-            if not id_produto_winthor:
                 item_status = "NAO_ENCONTRADO"
-                item_msgs.append("Produto não encontrado no banco (EAN ou Alias inexistente)")
-            
+                item_msgs.append("Produto não encontrado (EAN/Alias desconhecido)")
+                
             # B. Validação Matemática
             qtd = float(item.get('quantidade_total', 0))
             vlr_unit = float(item.get('valor_unitario', 0))
@@ -104,32 +100,53 @@ class OrderValidator:
             
             # Tolerância de 1 centavo
             if abs(total_linha_calc - vlr_total_pdf) > 0.05:
-                # Se status era OK, vira ATENCAO. Se era NAO_ENCONTRADO, mantem.
-                if item_status == "OK": item_status = "DIVERGENCIA_VALOR"
-                item_msgs.append(f"Cálculo diverge: PDF {vlr_total_pdf} vs Calc {total_linha_calc}")
                 
-            total_calculado_sistema += vlr_total_pdf
+                corrigido = False
+                
+                if qtd > 0:
+                    vlr_unit_impl = vlr_total_pdf / qtd
+                    aceitavel = False
+                    vlr_padrao = WinthorClient.get_price_from_id(id_produto_winthor,cliente_db.id) if id_produto_winthor and cliente_db else None
+                    if vlr_padrao:
+                        variacao = abs(vlr_unit_impl - vlr_padrao) / vlr_padrao
+                        if variacao <= 0.40:  # Até 40% de variação aceitável
+                            aceitavel = True
+                    else:
+                        inteiritude = vlr_total_pdf / vlr_unit
+                        variacao = abs(inteiritude - round(inteiritude)) / round(inteiritude) if round(inteiritude) > 0 else 1
+                        if variacao <= 0.05:  # Até 5% de variação aceitável para inteiritude
+                            aceitavel = True
+                    if aceitavel:
+                        vlr_unit = round(vlr_unit_impl, 2)
+                        total_linha_calc = round(qtd * vlr_unit, 2)
+                        if item_status == "OK": item_status = "CORRIGIDO_AUTO"
+                        item_msgs.append(f"Valor unitário ajustado para {vlr_unit} com base no total do PDF")
+                        corrigido = True
+                # Se status era OK, vira ATENCAO. Se era NAO_ENCONTRADO, mantem.
+                if not corrigido:
+                    if item_status == "OK": item_status = "DIVERGENCIA_VALOR"
+                    item_msgs.append(f"Cálculo diverge: PDF {vlr_total_pdf} vs Calc {total_linha_calc}")
+                
+            total_calculado_sistema += total_linha_calc
 
             # Monta item validado
             itens_validados.append({
                 **item, # Copia dados originais
                 "id_produto_winthor": id_produto_winthor,
+                "valor_unitario": vlr_unit,
+                "valor_total_calculado": total_linha_calc,
                 "status_item": item_status,
                 "mensagens": item_msgs
             })
             
-            if item_status != "OK":
-                if "DIVERGENCIA" in item_status:
-                    # Não necessariamente invalida o pedido, mas gera aviso
-                    pass 
-                else:
-                    erros_pedido.append(f"Item {item.get('descricao')} com problema: {item_status}")
+            if item_status not in ["OK", "CORRIGIDO_AUTO"]:
+                erros_pedido.append(f"Item {item.get('descricao')} -> {item_status}")
 
         # 3. Definição Status Geral do Pedido
         status_pedido = "VALIDO"
         if erros_pedido:
             # Se tem erro de produto não encontrado ou cliente, é falha de cadastro
-            status_pedido = "REVISAO_CADASTRO"
+            status_pedido = "REVISAO_CADASTRO" if any(x in str(erros_pedido) for x in ["NAO_ENCONTRADO", "Cliente não"]) else "ATENCAO"
         
         # Verifica total geral
         total_pdf = float(pedido.get('total_pedido_validacao', 0))

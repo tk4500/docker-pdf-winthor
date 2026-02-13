@@ -203,7 +203,7 @@ class WinthorClient:
         total_upserted = 0
 
         url = f"{self.base_url}/api/wholesale/v1/customer/list"
-        self._get_customer_to_chargingId()
+        self._set_customer_to_chargingId()
 
         while hasNext:
             params = {

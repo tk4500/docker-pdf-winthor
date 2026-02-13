@@ -6,7 +6,7 @@ from sqlalchemy import cast, String, or_
 from datetime import datetime, timedelta
 from fastapi import Form 
 # Imports Locais
-from app.validator_service import OrderValidator
+from validator_service import OrderValidator
 import models
 import schemas
 from database import engine, get_db

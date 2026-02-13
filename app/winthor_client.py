@@ -123,6 +123,8 @@ class WinthorClient:
                         chargingId = pedido.get("chargingId")
                         if not clientes_charging.get(c_id) and chargingId:
                             clientes_charging[c_id] = chargingId
+                params["page"] += 1
+                hasNext = data.get("hasNext") or (len(lista) > 0)
             except Exception as e:
                 logger.error(f"Erro ao buscar pedidos para mapear chargingId: {e}")
                 break

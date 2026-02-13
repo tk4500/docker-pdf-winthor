@@ -87,7 +87,7 @@ class WinthorClient:
                 logger.error(f"Erro ao buscar EAN do produto {produto_id}: {e}")
                 return None
 
-    def _get_customer_to_chargingId(self):
+    def _set_customer_to_chargingId(self):
         logger.info("Buscando clientes para mapear chargingId...")
         if not self.token:
             self.authenticate()
@@ -103,7 +103,7 @@ class WinthorClient:
             "viewDocument": False,
         }
         hasNext = True
-        clientes_charging = {}
+        non_charging_id_customers = self.db.query(Cliente).filter(Cliente.chargingId == None).all()
         while hasNext:
             try:
                 response = self.session.get(url, params=params)
@@ -116,20 +116,28 @@ class WinthorClient:
                     f"Página {params['page']} de pedidos retornada para mapear chargingId."
                 )
                 lista = data if isinstance(data, list) else data.get("items", [])
-                for pedido in lista:
-                    cliente = pedido.get("customer", {})
-                    if cliente:
-                        c_id = cliente.get("id")
-                        chargingId = pedido.get("chargingId")
-                        if not clientes_charging.get(c_id) and chargingId:
-                            if chargingId != "BNF":
-                                clientes_charging[c_id] = chargingId
+
+                for ped in lista:
+                    c_id = ped.get("customer", {}).get("id")
+                    if c_id and any(c.id == c_id for c in non_charging_id_customers):
+                        chargingId = ped.get("chargingId")
+                        if chargingId and chargingId != "BNF":
+                            index = next(i for i, c in enumerate(non_charging_id_customers) if c.id == c_id)
+                            cliente_db = non_charging_id_customers.pop(index)
+                            if cliente_db:
+                                cliente_db.chargingId = chargingId
+                                self.db.commit()
+                                logger.info(
+                                    f"Cliente {c_id} atualizado com chargingId {chargingId}."
+                                )
+                                
                 params["page"] += 1
-                hasNext = data.get("hasNext") or (len(lista) > 0)
+                hasNext = data.get("hasNext") or (
+                    len(lista) > 0
+                )
             except Exception as e:
-                logger.error(f"Erro ao buscar pedidos para mapear chargingId: {e}")
+                logger.error(f"Erro ao mapear chargingId: {e}")
                 break
-        return clientes_charging
 
     def _get_charging_id(self, cliente_id: int):
         logger.info(f"Buscando chargingId para cliente {cliente_id}...")
@@ -141,7 +149,7 @@ class WinthorClient:
             "branchId": self.branch_id,
             "page": 36,
             "pageSize": 100,
-            "daysOfSearch": 1000,
+            "daysOfSearch": 700,
             "order": "lastChange",
             "orderStatus": "F",
             "saleOrigin": "T",
@@ -165,7 +173,7 @@ class WinthorClient:
                     (
                         pedido
                         for pedido in lista
-                        if pedido.get("customer", {}).get("id") == cliente_id and pedido.get("chargingId") != "BNF"
+                        if pedido.get("customer", {}).get("id") == cliente_id
                     ),
                     None,
                 )
@@ -174,7 +182,8 @@ class WinthorClient:
                     logger.info(
                         f"chargingId encontrado para cliente {cliente_id}: {chargingId}"
                     )
-                    return chargingId
+                    if chargingId != "BNF":
+                        return chargingId
 
                 params["page"] += 1
                 hasNext = data.get("hasNext") or (
@@ -194,7 +203,7 @@ class WinthorClient:
         total_upserted = 0
 
         url = f"{self.base_url}/api/wholesale/v1/customer/list"
-        costumers_charging = self._get_customer_to_chargingId()
+        self._get_customer_to_chargingId()
 
         while hasNext:
             params = {
@@ -244,11 +253,7 @@ class WinthorClient:
                             cliente_db.chargingId = (
                                 cliente_db.chargingId
                                 if cliente_db.chargingId
-                                else (
-                                    costumers_charging.get(c_id)
-                                    if costumers_charging.get(c_id)
-                                    else self._get_charging_id(c_id)
-                                )
+                                else self._get_charging_id(c_id)
                             )
                             cliente_db.regionId = item.get("regionId")
                             self.db.commit()

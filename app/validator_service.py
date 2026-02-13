@@ -43,6 +43,7 @@ class OrderValidator:
         itens_validados = []
         if pedido.get('dados_cliente'):
             cliente_db = self.db.query(Cliente).filter(Cliente.id == pedido['dados_cliente'].get('id_winthor')).first()
+            cnpj_cliente = cliente_db.cnpj_cpf if cliente_db else pedido.get('dados_cliente', {}).get('cnpj_original')
         else:
             cnpj_cliente = "".join(filter(str.isdigit, pedido.get('cliente', {}).get('cnpj_cpf', '')))
             cliente_db = self.db.query(Cliente).filter(Cliente.cnpj_cpf == cnpj_cliente).first()

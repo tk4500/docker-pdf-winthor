@@ -103,6 +103,7 @@ class WinthorClient:
                 "branchId": self.branch_id,
                 "page": page,
                 "pageSize": page_size,
+                "withDeliveryAddress": False,  
             }
 
             try:
@@ -140,6 +141,7 @@ class WinthorClient:
                             cliente_db.razao_social = item.get("name")
                             cliente_db.plano_pag_padrao = item.get("paymentPlanId")
                             cliente_db.sellerId = item.get("sellerId")
+                            cliente_db.regionId = item.get("regionId")
                             self.db.commit()
                         else:
                             # INSERE (Insert)
@@ -149,6 +151,7 @@ class WinthorClient:
                                 razao_social=item.get("name"),
                                 plano_pag_padrao=item.get("paymentPlanId"),
                                 sellerId=item.get("sellerId"),
+                                regionId=item.get("regionId"),
                             )
                             self.db.add(novo_cliente)
                             self.db.commit()
@@ -186,7 +189,7 @@ class WinthorClient:
         url = f"{self.base_url}/api/purchases/v1/products/"
 
         while hasNext:
-            params = {"branchId": self.branch_id, "page": page, "pageSize": page_size}
+            params = {"branchId": self.branch_id, "page": page, "pageSize": page_size, "callOrigin": "T"}
 
             try:
                 response = self.session.get(url, params=params)
@@ -218,6 +221,7 @@ class WinthorClient:
                             produto_db.nome = item.get("description")
                             produto_db.ean = ean
                             produto_db.unidade = item.get("unit") or "UN"
+                            self.db.commit()
                         else:
                             # Insert
                             novo_prod = Produto(

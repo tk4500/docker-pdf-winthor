@@ -53,6 +53,7 @@ class Cliente(Base):
     plano_pag_padrao = Column(Integer)
     sellerId = Column(Integer) # Vendedor padrão no Winthor
     chargingId = Column(String) # ID de cobrança no Winthor
+    regionId = Column(Integer) # Região do cliente (para regras de negócio específicas)
     
     aliases = relationship("ProdutoAlias", back_populates="cliente")
 

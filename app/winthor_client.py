@@ -117,7 +117,7 @@ class WinthorClient:
 
                 # Adaptação para caso venha lista direta ou objeto com items
                 lista = data if isinstance(data, list) else data.get("items", [])
-
+                logger.info(f"Sync Clientes - Página {page} retornou {len(lista)} itens.")
                 if not lista:
                     hasNext = False
                     break
@@ -200,7 +200,7 @@ class WinthorClient:
                 response.raise_for_status()
                 data = response.json()
                 lista = data if isinstance(data, list) else data.get("items", [])
-
+                logger.info(f"Sync Produtos - Página {page} retornou {len(lista)} itens.")
                 if not lista:
                     hasNext = False
                     break

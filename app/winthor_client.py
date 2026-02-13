@@ -112,13 +112,15 @@ class WinthorClient:
                     response = self.session.get(url, params=params)
                 response.raise_for_status()
                 data = response.json()
+                logger.info(f"Página {params['page']} de pedidos retornada para busca de chargingId.")
                 lista = data if isinstance(data, list) else data.get("items", [])
-                for pedido in lista:
-                    cust_data = pedido.get("customer", {})
-                    c_id = cust_data.get("id")
-                    if c_id == cliente_id:
-                        chargingId = pedido.get("chargingId")
-                        return chargingId
+                
+                ped = next((pedido for pedido in lista if pedido.get("customer", {}).get("id") == cliente_id), None)
+                if ped:
+                    chargingId = ped.get("chargingId")
+                    logger.info(f"chargingId encontrado para cliente {cliente_id}: {chargingId}")
+                    return chargingId
+
                 params["page"] += 1
                 hasNext = data.get("hasNext") or (len(lista) > 0)  # Continua se tiver next ou se ainda tiver itens (fallback)
             except Exception as e:

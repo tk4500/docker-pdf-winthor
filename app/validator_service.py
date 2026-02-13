@@ -46,9 +46,10 @@ class OrderValidator:
             cnpj_cliente = "".join(filter(str.isdigit, pedido.get('cliente', {}).get('cnpj_cpf', '')))
             cliente_db = self.db.query(Cliente).filter(Cliente.cnpj_cpf == cnpj_cliente).first()
         # 1. Validar Cliente
+        client_id = cliente_db.id if cliente_db else None
         info_cliente = {
             "encontrado": bool(cliente_db),
-            "id_winthor": cliente_db.id if cliente_db else None,
+            "id_winthor": client_id,
             "razao_social": cliente_db.razao_social if cliente_db else pedido.get('cliente', {}).get('nome'),
             "cnpj_original": cnpj_cliente
         }
@@ -106,7 +107,7 @@ class OrderValidator:
                 if qtd > 0:
                     vlr_unit_impl = vlr_total_pdf / qtd
                     aceitavel = False
-                    vlr_padrao = WinthorClient.get_price_from_id(id_produto_winthor,cliente_db.id) if id_produto_winthor and cliente_db else None
+                    vlr_padrao = WinthorClient.get_price_from_id(id_produto_winthor, client_id)
                     if vlr_padrao:
                         variacao = abs(vlr_unit_impl - vlr_padrao) / vlr_padrao
                         if variacao <= 0.40:  # Até 40% de variação aceitável

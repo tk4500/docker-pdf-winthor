@@ -198,9 +198,7 @@ class WinthorClient:
             self.authenticate()
         url = f"{self.base_url}/api/wholesale/v1/customer/"
         params = {
-            "branchId": self.branch_id,
-            "customerId": cliente_id,
-            "withDeliveryAddress": False,
+            "customerId": cliente_id
         }
         try:
             response = self.session.get(url, params=params)

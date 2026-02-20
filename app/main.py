@@ -137,7 +137,7 @@ def buscar_cliente_id(client_id: int, db: Session = Depends(get_db)):
     winthor_client = WinthorClient(db)
     return winthor_client.get_cliente(client_id)
 
-@app.put("/clientes/salvar", tags=["salvar"], dependencies=[Depends(PermissionChecker("client:save"))]) 
+@app.put("/clientes/salvar", tags=["Salvar"], dependencies=[Depends(PermissionChecker("client:save"))]) 
 def salvar_cliente(cliente: schemas.ClienteUpdate, db: Session = Depends(get_db)):
     
     cliente_banco = db.query(models.Cliente).filter(models.Cliente.id == cliente.id).first()

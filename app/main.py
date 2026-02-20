@@ -137,6 +137,18 @@ def buscar_cliente_id(client_id: int, db: Session = Depends(get_db)):
     winthor_client = WinthorClient(db)
     return winthor_client.get_cliente(client_id)
 
+@app.post("/sync/regionId", tags=["Sync"], dependencies=[Depends(PermissionChecker("sync:winthor"))])
+def sincronizar_region_id(db: Session = Depends(get_db)):
+    clientes = db.query(models.Cliente).filter(models.Cliente.regionId == None).all()
+    winthor_client = WinthorClient(db)
+    for cliente in clientes:
+        c = winthor_client.get_cliente(cliente.id)
+        region_id = c.regionId if c else None
+        if region_id:
+            cliente.regionId = region_id
+    db.commit()
+    return {"msg": f"Sincronização de regionId concluída para {len(clientes)} clientes."}
+
 @app.put("/clientes/salvar", tags=["Salvar"], dependencies=[Depends(PermissionChecker("client:save"))]) 
 def salvar_cliente(cliente: schemas.ClienteUpdate, db: Session = Depends(get_db)):
     

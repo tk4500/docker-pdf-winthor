@@ -143,7 +143,7 @@ def sincronizar_region_id(db: Session = Depends(get_db)):
     winthor_client = WinthorClient(db)
     for cliente in clientes:
         c = winthor_client.get_cliente(cliente.id)
-        region_id = c.regionId if c else None
+        region_id = c.get("regionId") if c else None
         if region_id:
             cliente.regionId = region_id
     db.commit()

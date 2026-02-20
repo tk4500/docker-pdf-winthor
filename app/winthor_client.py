@@ -212,7 +212,7 @@ class WinthorClient:
             return data
         except Exception as e:
             logger.error(f"Erro ao buscar cliente {cliente_id}: {e}")
-            return e
+            return str(e)
 
     def sync_clientes(self):
         if not self.token:

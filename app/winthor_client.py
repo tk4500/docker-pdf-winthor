@@ -193,6 +193,27 @@ class WinthorClient:
                 logger.error(f"Erro ao buscar pedidos para cliente {cliente_id}: {e}")
         return 341  # Retorna ID de cobrança padrão se não encontrar nenhum pedido do cliente
 
+    def get_cliente(self, cliente_id: int):
+        if not self.token:
+            self.authenticate()
+        url = f"{self.base_url}/api/wholesale/v1/customer/"
+        params = {
+            "branchId": self.branch_id,
+            "customerId": cliente_id,
+            "withDeliveryAddress": False,
+        }
+        try:
+            response = self.session.get(url, params=params)
+            if response.status_code == 401:
+                self.authenticate()
+                response = self.session.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            return data
+        except Exception as e:
+            logger.error(f"Erro ao buscar cliente {cliente_id}: {e}")
+            return None
+
     def sync_clientes(self):
         if not self.token:
             self.authenticate()

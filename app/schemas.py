@@ -19,6 +19,15 @@ class RoleCreate(BaseModel):
     name: str
     permissions_slugs: List[str]
 
+class ClienteUpdate(BaseModel):
+    id: int
+    cnpj_cpf: str
+    razao_social: str
+    plano_pag_padrao: str
+    sellerId: str
+    chargingId: str
+    regionId: str
+
 # --- Configuração ---
 class ConfigItem(BaseModel):
     chave: str

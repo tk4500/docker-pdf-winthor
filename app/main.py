@@ -132,6 +132,34 @@ def buscar_cliente(termo: str, db: Session = Depends(get_db)):
         (cast(models.Cliente.cnpj_cpf, String).ilike(termo_busca))
     ).limit(20).all()
 
+@app.get("/clientes/{client_id}", tags=["Busca"], dependencies=[Depends(get_current_user)]) 
+def buscar_cliente_id(client_id: int, db: Session = Depends(get_db)):
+    winthor_client = WinthorClient(db)
+    return winthor_client.get_cliente(client_id)
+
+@app.put("/clientes/salvar", tags=["salvar"], dependencies=[Depends(PermissionChecker("client:save"))]) 
+def salvar_cliente(cliente: schemas.ClienteUpdate, db: Session = Depends(get_db)):
+    
+    cliente_banco = db.query(models.Cliente).filter(models.Cliente.id == cliente.id).first()
+    if not cliente_banco: raise HTTPException(status_code=404, detail="Cliente não encontrado")
+
+    if cliente.chargingId:
+        cliente_banco.chargingId = cliente.chargingId
+    if cliente.cnpj_cpf:
+        cliente_banco.cnpj_cpf = cliente.cnpj_cpf
+    if cliente.plano_pag_padrao:
+        cliente_banco.plano_pag_padrao = cliente.plano_pag_padrao
+    if cliente.razao_social:
+        cliente_banco.razao_social = cliente.razao_social
+    if cliente.regionId:
+        cliente_banco.regionId = cliente.regionId
+    if cliente.sellerId:
+        cliente_banco.sellerId = cliente.sellerId
+    db.commit()
+    cliente_banco = db.query(models.Cliente).filter(models.Cliente.id == cliente.id).first()
+
+    return cliente_banco
+
 @app.get("/produtos/busca", tags=["Busca"], dependencies=[Depends(get_current_user)])
 def buscar_produto(termo: str, db: Session = Depends(get_db)):
     termo_busca = f"%{termo}%"

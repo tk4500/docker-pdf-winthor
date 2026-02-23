@@ -108,6 +108,7 @@ class LLMService:
            Se houver 'Emb', a quantidade_total = Qtde * Emb. Se não, é apenas Qtde.
         4. Converta valores monetários para ponto flutuante (ex: 84,24 -> 84.24).
         5. Identifique EANs (códigos de barra).
+        6. CNPJ tem 14 numeros e CPF tem 11, ambos podem ter formatações diferentes (com ou sem pontos, traços, etc), mas extraia todos os numeros para o campo cnpj_cpf.
         TEXTO DO PDF:
         {text_content}
         """

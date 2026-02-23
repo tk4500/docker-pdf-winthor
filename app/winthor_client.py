@@ -731,6 +731,7 @@ class WinthorClient:
             "listOfOrderItem": itens_winthor,
             "seller": sellerId,
             "observation": f"PED {pedido_validado.get('numero_pedido')}",
+            "shippingTrackingCodeSale": pedido_validado.get('numero_pedido'),
         }
 
         # 4. Enviar

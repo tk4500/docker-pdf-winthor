@@ -59,7 +59,7 @@ class WinthorClient:
         user = get_current_user()
         login = self._get_config("WINTHOR_LOGIN", os.getenv("WINTHOR_LOGIN"))
         senha = self._get_config("WINTHOR_PASSWORD", os.getenv("WINTHOR_PASSWORD"))
-        if user:
+        if user and user.winthor_password:
             logger.info(f"Autenticando Winthor para usuário {user.username}...")
             login = user.username
             senha = user.winthor_password

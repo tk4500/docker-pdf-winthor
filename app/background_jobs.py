@@ -1,6 +1,6 @@
 import traceback
 from datetime import datetime
-from app import models
+import models
 from sqlalchemy.orm import Session
 from models import ProcessamentoPedido, ProcessamentoPedido as Job # Alias
 from pdf_processor import PDFProcessor

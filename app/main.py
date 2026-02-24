@@ -1,4 +1,5 @@
 from typing import List
+from venv import logger
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -48,12 +49,17 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     if user and verify_password(form_data.password, user.hashed_password):
         local_auth_success = True
     if not local_auth_success:
+        logger.info(f"Autenticação local falhou para {form_data.username}, tentando Winthor...")
         if not user or user.winthor_password is not None:
             winthor_hash = hashlib.md5(form_data.password.encode('utf-8')).hexdigest().upper()
+            logger.info(f"Hash MD5 do Winthor para comparação: {winthor_hash}")
             winthor_client = WinthorClient(db)
             is_winthor_valid = winthor_client.authenticate_user(form_data.username, winthor_hash)
+            
             if is_winthor_valid:
+                logger.info(f"Autenticação no Winthor bem-sucedida para {form_data.username}")
                 if not user:
+                    logger.info(f"Criando novo usuário local para {form_data.username} com senha do Winthor.")
                     # Cria um novo usuário importado do Winthor
                     # Opcional: Você pode buscar uma Role padrão aqui, ex: db.query(models.Role).filter_by(name="Vendedor").first()
                     user = models.User(
@@ -65,6 +71,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
                     )
                     db.add(user)
                 else:
+                    logger.info(f"Atualizando senha do usuário existente {form_data.username} com hash do Winthor.")
                     # Atualiza o usuário existente (sincroniza as senhas)
                     user.hashed_password = get_password_hash(form_data.password)
                     user.winthor_password = winthor_hash
@@ -72,6 +79,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
                 db.commit()
                 db.refresh(user)
                 local_auth_success = True
+            else:
+                logger.warning(f"Autenticação no Winthor falhou para {form_data.username}")
     if not local_auth_success:
         raise HTTPException(status_code=401, detail="Usuário ou senha incorretos")
     

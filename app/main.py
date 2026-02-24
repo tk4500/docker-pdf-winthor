@@ -442,8 +442,8 @@ def importar_pedidos_manuais(payload: schemas.ListaPedidosSync, db: Session = De
     return WinthorClient(db, current_user=current_user).importar_pedidos_por_ids(payload.ids)
 
 @app.post("/sync/enriquecer-produtos", tags=["Sync"], dependencies=[Depends(PermissionChecker("sync:winthor"))])
-def enriquecer_produtos(background_tasks: BackgroundTasks, apenas_incompletos: bool = False, db: Session = Depends(get_db)):
-    background_tasks.add_task(job_enriquecer_produtos, db, apenas_incompletos)
+def enriquecer_produtos(background_tasks: BackgroundTasks, apenas_incompletos: bool = False, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    background_tasks.add_task(job_enriquecer_produtos, db, apenas_incompletos, user)
     return {"mensagem": "Processo de atualização detalhada iniciado em background."}
 
 # ==============================================================================

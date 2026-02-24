@@ -72,7 +72,7 @@ def finalizar_envio_winthor(job_id: str, db: Session, pedido_manual: dict = None
         # Pega o payload. Se veio manual (finalizar_pedido endpoint) usa ele, senão pega do banco
         payload_final = pedido_manual if pedido_manual else job.resultado_json['pedidos'][0]
         
-        client = WinthorClient(db)
+        client = WinthorClient(db, user)
         # Req 8: Passa flag de bonificação
         client.is_bonificacao = job.is_bonificacao 
         
@@ -178,7 +178,7 @@ def processar_arquivo_background(job_id: str, file_content: bytes, filename: str
         job.data_finalizacao = datetime.utcnow()
         db.commit()
 
-def job_enriquecer_produtos(db: Session, apenas_incompletos: bool):
+def job_enriquecer_produtos(db: Session, apenas_incompletos: bool, user: models.User= None):
     """Função worker para atualizar cadastro de produtos"""
     client = WinthorClient(db)
     try:

@@ -1,5 +1,5 @@
 from typing import List
-from venv import logger
+import logging
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -33,6 +33,7 @@ from background_jobs import processar_arquivo_background, job_enriquecer_produto
 # Inicialização
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Winthor PDF Parser API")
+logger = logging.getLogger("API")
 
 # ==============================================================================
 # 1. AUTENTICAÇÃO E SETUP

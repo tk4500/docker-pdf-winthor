@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from models import Configuracao, Cliente, Produto, ProdutoConversao
 import os
 from datetime import datetime
+from auth import get_current_user
 
 logger = logging.getLogger("WinthorClient")
 logging.basicConfig(level=logging.INFO)
@@ -55,8 +56,13 @@ class WinthorClient:
             return False
 
     def authenticate(self):
+        user = get_current_user()
         login = self._get_config("WINTHOR_LOGIN", os.getenv("WINTHOR_LOGIN"))
         senha = self._get_config("WINTHOR_PASSWORD", os.getenv("WINTHOR_PASSWORD"))
+        if user:
+            logger.info(f"Autenticando Winthor para usuário {user.username}...")
+            login = user.username
+            senha = user.winthor_password
         url = f"{self.base_url}/winthor/autenticacao/v1/login"
 
         try:

@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from models import Configuracao, Cliente, Produto, ProdutoConversao
 import os
 from datetime import datetime
-from auth import get_current_user
 
 logger = logging.getLogger("WinthorClient")
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +29,10 @@ class WinthorClient:
             )
         except:
             self.branch_id = 1
+        try:
+            self.authenticate()
+        except Exception as e:
+            logger.error(f"Erro ao autenticar no Winthor durante inicialização: {e}")
 
     def _get_config(self, key, default=None):
         conf = self.db.query(Configuracao).filter(Configuracao.chave == key).first()

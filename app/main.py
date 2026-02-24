@@ -34,7 +34,7 @@ from background_jobs import processar_arquivo_background, job_enriquecer_produto
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Winthor PDF Parser API")
 logger = logging.getLogger("API")
-
+logging.basicConfig(level=logging.INFO)
 # ==============================================================================
 # 1. AUTENTICAÇÃO E SETUP
 # ==============================================================================

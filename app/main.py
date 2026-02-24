@@ -51,7 +51,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     if not local_auth_success:
         logger.info(f"Autenticação local falhou para {form_data.username}, tentando Winthor...")
         if not user or user.winthor_password is not None:
-            winthor_hash = hashlib.md5(form_data.password.encode('utf-8')).hexdigest().upper()
+            winthor_hash = hashlib.md5(form_data.password.encode('utf-8').upper()).hexdigest().upper()
             logger.info(f"Hash MD5 do Winthor para comparação: {winthor_hash}")
             winthor_client = WinthorClient(db)
             is_winthor_valid = winthor_client.authenticate_user(form_data.username, winthor_hash)

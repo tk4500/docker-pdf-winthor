@@ -1,5 +1,6 @@
 import traceback
 from datetime import datetime
+from app import models
 from sqlalchemy.orm import Session
 from models import ProcessamentoPedido, ProcessamentoPedido as Job # Alias
 from pdf_processor import PDFProcessor
@@ -13,7 +14,7 @@ MAX_PAGES_FOR_AI = 10
 
 # --- Funções Auxiliares Internas ---
 
-def avanca_fluxo_automatico(job: Job, db: Session):
+def avanca_fluxo_automatico(job: Job, db: Session, user: models.User = None):
     """
     Req 5: Verifica se pode avançar para o próximo passo automaticamente
     """
@@ -23,11 +24,11 @@ def avanca_fluxo_automatico(job: Job, db: Session):
     # Se validou com sucesso, tenta enviar
     if job.status_global == "VALIDADO":
         try:
-            finalizar_envio_winthor(job.id, db)
+            finalizar_envio_winthor(job.id, db, user)
         except:
             pass # Erro já tratado dentro da função
 
-def validar_job_existente(job: Job, dados_brutos_pedido: dict, db: Session):
+def validar_job_existente(job: Job, dados_brutos_pedido: dict, db: Session, user: models.User = None):
     """Req 4: Endpoint isolado de validação chama isso"""
     try:
         job.status_global = "VALIDANDO_DADOS"
@@ -53,14 +54,14 @@ def validar_job_existente(job: Job, dados_brutos_pedido: dict, db: Session):
         db.commit()
         
         # Trigger Auto Process
-        avanca_fluxo_automatico(job, db)
+        avanca_fluxo_automatico(job, db, user)
 
     except Exception as e:
         job.status_global = "ERRO_VALIDACAO"
         job.mensagem_erro = str(e)
         db.commit()
 
-def finalizar_envio_winthor(job_id: str, db: Session, pedido_manual: dict = None):
+def finalizar_envio_winthor(job_id: str, db: Session, pedido_manual: dict = None, user: models.User = None):
     """Req 4: Endpoint isolado de envio chama isso"""
     job = db.query(Job).filter(Job.id == job_id).first()
     
@@ -98,7 +99,7 @@ def finalizar_envio_winthor(job_id: str, db: Session, pedido_manual: dict = None
 
 # --- Workers Exportados (Chamados pelo Main) ---
 
-def processar_arquivo_background(job_id: str, file_content: bytes, filename: str, db: Session):
+def processar_arquivo_background(job_id: str, file_content: bytes, filename: str, db: Session, user: models.User = None):
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job: return
 
@@ -161,14 +162,14 @@ def processar_arquivo_background(job_id: str, file_content: bytes, filename: str
                 db.add(sub_job)
                 
                 # Já executamos a validação para o sub-job
-                validar_job_existente(sub_job, p_raw, db)
+                validar_job_existente(sub_job, p_raw, db, user)
                 
             db.commit()
             return # Pai finalizado como container
 
         # Caso seja 1 pedido só, validamos o próprio job
         pedido_unico = lista_pedidos[0] if lista_pedidos else dados_brutos 
-        validar_job_existente(job, pedido_unico, db)
+        validar_job_existente(job, pedido_unico, db, user)
 
     except Exception as e:
         traceback.print_exc()

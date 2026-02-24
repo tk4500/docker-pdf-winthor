@@ -13,8 +13,9 @@ logging.basicConfig(level=logging.INFO)
 
 
 class WinthorClient:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, current_user=None):
         self.db = db
+        self.current_user = current_user
         self.session = requests.Session()
         self.base_url = self._get_config(
             "WINTHOR_BASE_URL", os.getenv("WINTHOR_BASE_URL")
@@ -56,13 +57,14 @@ class WinthorClient:
             return False
 
     def authenticate(self):
-        user = get_current_user()
         login = self._get_config("WINTHOR_LOGIN", os.getenv("WINTHOR_LOGIN"))
         senha = self._get_config("WINTHOR_PASSWORD", os.getenv("WINTHOR_PASSWORD"))
-        if user and user.winthor_password:
-            logger.info(f"Autenticando Winthor para usuário {user.username}...")
-            login = user.username
-            senha = user.winthor_password
+        if self.current_user and self.current_user.winthor_password:
+            logger.info(f"Autenticando Winthor para usuário {self.current_user.username}...")
+            login = self.current_user.username
+            senha = self.current_user.winthor_password
+        else:
+            logger.info("Autenticando Winthor com credenciais globais...")
         url = f"{self.base_url}/winthor/autenticacao/v1/login"
 
         try:

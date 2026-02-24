@@ -54,7 +54,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         if not user or user.winthor_password is not None:
             winthor_hash = hashlib.md5(form_data.password.encode('utf-8').upper()).hexdigest().upper()
             logger.info(f"Hash MD5 do Winthor para comparação: {winthor_hash}")
-            winthor_client = WinthorClient(db)
+            winthor_client = WinthorClient(db, current_user=user if user else None)
             is_winthor_valid = winthor_client.authenticate_user(form_data.username, winthor_hash)
             
             if is_winthor_valid:
@@ -172,14 +172,14 @@ def buscar_cliente(termo: str, db: Session = Depends(get_db)):
     ).limit(20).all()
 
 @app.get("/clientes/{client_id}", tags=["Busca"], dependencies=[Depends(get_current_user)]) 
-def buscar_cliente_id(client_id: int, db: Session = Depends(get_db)):
-    winthor_client = WinthorClient(db)
+def buscar_cliente_id(client_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    winthor_client = WinthorClient(db, current_user=current_user)
     return winthor_client.get_cliente(client_id)
 
 @app.post("/sync/regionId", tags=["Sync"], dependencies=[Depends(PermissionChecker("sync:winthor"))])
-def sincronizar_region_id(db: Session = Depends(get_db)):
+def sincronizar_region_id(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     clientes = db.query(models.Cliente).filter(models.Cliente.regionId == None).all()
-    winthor_client = WinthorClient(db)
+    winthor_client = WinthorClient(db, current_user=current_user)
     for cliente in clientes:
         c = winthor_client.get_cliente(cliente.id)
         region_id = c.get("regionId") if c else None
@@ -260,7 +260,7 @@ def criar_pedido_manual(
     
     # Chama validação (síncrona para manual)
     from background_jobs import validar_job_existente
-    validar_job_existente(novo_job, json_manual, db)
+    validar_job_existente(novo_job, json_manual, db, user)
     
     return {"job_id": novo_job.id, "status": novo_job.status_global}
 
@@ -288,7 +288,7 @@ async def upload_pedido_async(
     db.add(novo_job)
     db.commit()
     
-    background_tasks.add_task(processar_arquivo_background, novo_job.id, contents, file.filename, db)
+    background_tasks.add_task(processar_arquivo_background, novo_job.id, contents, file.filename, db, user)
     return {"job_id": novo_job.id, "status": "Processamento iniciado"}
 
 @app.post("/pedidos/upload-json-bulk", tags=["Pedidos"], dependencies=[Depends(PermissionChecker("order:create"))])
@@ -326,13 +326,13 @@ def verificar_status(job_id: str, db: Session = Depends(get_db)):
     }
 
 @app.delete("/pedidos/{job_id}", tags=["Pedidos"], dependencies=[Depends(PermissionChecker("order:cancel"))])
-def cancelar_pedido(job_id: str, db: Session = Depends(get_db)):
+def cancelar_pedido(job_id: str, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
     job = db.query(models.ProcessamentoPedido).filter(models.ProcessamentoPedido.id == job_id).first()
     if not job: raise HTTPException(404, "Pedido não encontrado")
     
     # Se já foi enviado pro Winthor, tenta cancelar lá
     if job.status_global == "ENVIADO_WINTHOR" and job.winthor_order_id:
-        client = WinthorClient(db)
+        client = WinthorClient(db, current_user=user)
         try:
             client.cancelar_pedido_winthor(job.winthor_order_id) # Precisa implementar no Client
             job.status_global = "CANCELADO_WINTHOR"
@@ -365,7 +365,7 @@ def finalizar_pedido(
         raise HTTPException(status_code=400, detail=f"Pedido não passou na revalidação final: {retorno['status_pedido']}")
     try:
         msg_aprendizado = aprender_aliases(db, job_id, payload.pedido)
-        client = WinthorClient(db)
+        client = WinthorClient(db, current_user=user)
         resposta_winthor = client.enviar_pedido(payload.pedido)
 
         job.status_global = "ENVIADO_WINTHOR"
@@ -387,14 +387,14 @@ def finalizar_pedido(
 
 
 @app.post("/pedidos/{job_id}/revalidar", tags=["Steps"], dependencies=[Depends(PermissionChecker("order:validate"))])
-def revalidar_pedido(job_id: str, db: Session = Depends(get_db)):
+def revalidar_pedido(job_id: str, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
     job = db.query(models.ProcessamentoPedido).filter(models.ProcessamentoPedido.id == job_id).first()
     
     if not job: raise HTTPException(status_code=404, detail="Job não encontrado")
     if not job.resultado_json:
         raise HTTPException(status_code=400, detail="Job não possui JSON para revalidar")
     from background_jobs import validar_job_existente
-    validar_job_existente(job, job.resultado_json, db)
+    validar_job_existente(job, job.resultado_json, db, user)
     
     return {"msg": "Revalidado"}
 
@@ -430,16 +430,16 @@ def listar_historico(skip: int = 0, limit: int = 20, db: Session = Depends(get_d
 # ==============================================================================
 
 @app.post("/sync/clientes", tags=["Sync"], dependencies=[Depends(PermissionChecker("sync:winthor"))])
-def sincronizar_clientes(db: Session = Depends(get_db)):
-    return WinthorClient(db).sync_clientes()
+def sincronizar_clientes(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    return WinthorClient(db, current_user=current_user).sync_clientes()
 
 @app.post("/sync/produtos", tags=["Sync"], dependencies=[Depends(PermissionChecker("sync:winthor"))])
-def sincronizar_produtos(db: Session = Depends(get_db)):
-    return WinthorClient(db).sync_produtos()
+def sincronizar_produtos(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    return WinthorClient(db, current_user=current_user).sync_produtos()
 
 @app.post("/sync/importar-pedidos-antigos", tags=["Sync"], dependencies=[Depends(PermissionChecker("sync:winthor"))])
-def importar_pedidos_manuais(payload: schemas.ListaPedidosSync, db: Session = Depends(get_db)):
-    return WinthorClient(db).importar_pedidos_por_ids(payload.ids)
+def importar_pedidos_manuais(payload: schemas.ListaPedidosSync, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    return WinthorClient(db, current_user=current_user).importar_pedidos_por_ids(payload.ids)
 
 @app.post("/sync/enriquecer-produtos", tags=["Sync"], dependencies=[Depends(PermissionChecker("sync:winthor"))])
 def enriquecer_produtos(background_tasks: BackgroundTasks, apenas_incompletos: bool = False, db: Session = Depends(get_db)):

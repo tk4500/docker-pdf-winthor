@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from fastapi import Form 
 # Imports Locais
 from validator_service import OrderValidator
+import hashlib
 import models
 import schemas
 from database import engine, get_db
@@ -43,7 +44,35 @@ def root():
 @app.post("/token", response_model=schemas.Token, tags=["Auth"])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    local_auth_success = False
+    if user and verify_password(form_data.password, user.hashed_password):
+        local_auth_success = True
+    if not local_auth_success:
+        if not user or user.winthor_password is not None:
+            winthor_hash = hashlib.md5(form_data.password.encode('utf-8')).hexdigest().upper()
+            winthor_client = WinthorClient(db)
+            is_winthor_valid = winthor_client.authenticate_user(form_data.username, winthor_hash)
+            if is_winthor_valid:
+                if not user:
+                    # Cria um novo usuário importado do Winthor
+                    # Opcional: Você pode buscar uma Role padrão aqui, ex: db.query(models.Role).filter_by(name="Vendedor").first()
+                    user = models.User(
+                        username=form_data.username,
+                        hashed_password=get_password_hash(form_data.password), # Salva no padrão base bcrypt
+                        winthor_password=winthor_hash,
+                        role_id = 4,
+                        email=f"{form_data.username}@winthor.local" # Placeholder
+                    )
+                    db.add(user)
+                else:
+                    # Atualiza o usuário existente (sincroniza as senhas)
+                    user.hashed_password = get_password_hash(form_data.password)
+                    user.winthor_password = winthor_hash
+                
+                db.commit()
+                db.refresh(user)
+                local_auth_success = True
+    if not local_auth_success:
         raise HTTPException(status_code=401, detail="Usuário ou senha incorretos")
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)

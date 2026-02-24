@@ -34,6 +34,25 @@ class WinthorClient:
         if conf:
             return conf.valor
         return default
+    
+    def authenticate_user(self, login: str, senha_hash: str) -> bool:
+        """
+        Tenta autenticar um usuário específico no Winthor para validar suas credenciais.
+        Retorna True se as credenciais estiverem corretas (HTTP 200).
+        """
+        url = f"{self.base_url}/winthor/autenticacao/v1/login"
+        try:
+            # Tenta o login. Não salvamos o token aqui para não sobrescrever o token 
+            # de integração global que o sistema usa nas outras rotas.
+            response = requests.post(url, json={"login": login, "senha": senha_hash})
+            
+            # Se retornar 200 OK, a senha está correta
+            if response.status_code == 200:
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Falha na tentativa de login via Winthor para {login}: {e}")
+            return False
 
     def authenticate(self):
         login = self._get_config("WINTHOR_LOGIN", os.getenv("WINTHOR_LOGIN"))

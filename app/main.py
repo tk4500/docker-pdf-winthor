@@ -331,10 +331,10 @@ def cancelar_pedido(job_id: str, db: Session = Depends(get_db), user: models.Use
     if not job: raise HTTPException(404, "Pedido não encontrado")
     
     # Se já foi enviado pro Winthor, tenta cancelar lá
-    if job.status_global == "ENVIADO_WINTHOR" and job.winthor_order_id:
+    if job.status_global == "ENVIADO_WINTHOR" and job.retorno_winthor:
         client = WinthorClient(db, current_user=user)
         try:
-            client.cancelar_pedido_winthor(job.winthor_order_id) # Precisa implementar no Client
+            client.cancelar_pedido_winthor(job.retorno_winthor.get("orderId")) # Precisa implementar no Client
             job.status_global = "CANCELADO_WINTHOR"
         except Exception as e:
             raise HTTPException(500, f"Erro ao cancelar no Winthor: {str(e)}")

@@ -23,6 +23,7 @@ def avanca_fluxo_automatico(job: Job, db: Session, user: models.User = None):
     Req 5: Verifica se pode avançar para o próximo passo automaticamente
     """
     if not job.auto_process:
+        logger.info(f"Job {job.id} não é de auto-processamento. Aguardando ação manual.")
         return
 
     # Se validou com sucesso, tenta enviar
@@ -80,9 +81,11 @@ def finalizar_envio_winthor(job_id: str, db: Session, pedido_manual: dict = None
         client = WinthorClient(db, user)
         # Req 8: Passa flag de bonificação
         client.is_bonificacao = job.is_bonificacao 
-        
-        resposta = client.enviar_pedido(payload_final)
-        
+        try:
+            resposta = client.enviar_pedido(payload_final)
+        except Exception as e:
+            logger.error(f"Erro ao enviar pedido para Winthor: {e}")
+            raise e
         job.status_global = "ENVIADO_WINTHOR"
         job.winthor_order_id = str(resposta.get("orderId"))
         job.mensagem_erro = None

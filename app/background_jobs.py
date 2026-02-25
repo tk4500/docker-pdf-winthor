@@ -1,3 +1,4 @@
+import logging
 import traceback
 from datetime import datetime
 import models
@@ -9,6 +10,9 @@ from llm_service import LLMService
 from validator_service import OrderValidator
 from winthor_client import WinthorClient
 import uuid
+
+
+logger = logging.getLogger("BackgroundJobs")
 
 MAX_PAGES_FOR_AI = 10
 
@@ -57,6 +61,7 @@ def validar_job_existente(job: Job, dados_brutos_pedido: dict, db: Session, user
         avanca_fluxo_automatico(job, db, user)
 
     except Exception as e:
+        logger.error(f"Erro na validação do job {job.id}: {e}")
         job.status_global = "ERRO_VALIDACAO"
         job.mensagem_erro = str(e)
         db.commit()
@@ -92,6 +97,7 @@ def finalizar_envio_winthor(job_id: str, db: Session, pedido_manual: dict = None
         return resposta
         
     except Exception as e:
+        logger.error(f"Erro ao enviar pedido para Winthor: {e}")
         job.status_global = "ERRO_ENVIO"
         job.mensagem_erro = str(e)
         db.commit()
@@ -173,6 +179,7 @@ def processar_arquivo_background(job_id: str, file_content: bytes, filename: str
 
     except Exception as e:
         traceback.print_exc()
+        logger.error(f"Erro no processamento do arquivo para job {job.id}: {e}")
         job.status_global = "ERRO"
         job.mensagem_erro = str(e)
         job.data_finalizacao = datetime.utcnow()
@@ -183,6 +190,6 @@ def job_enriquecer_produtos(db: Session, apenas_incompletos: bool, user: models.
     client = WinthorClient(db)
     try:
         client.enriquecer_produtos_locais(apenas_incompletos=apenas_incompletos)
-        print("Job de enriquecimento finalizado com sucesso.")
+        logger.info("Job de enriquecimento finalizado com sucesso.")
     except Exception as e:
-        print(f"Erro no job de enriquecimento: {e}")
+        logger.error(f"Erro no job de enriquecimento: {e}")

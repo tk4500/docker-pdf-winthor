@@ -743,6 +743,8 @@ class WinthorClient:
                 if ean_final and ean_final != "0"
                 else str(id_final)
             )
+            
+            original = self.get_price_from_id(id_final, id_cliente)
 
             item_payload = {
                 "productSKUERPReferenceKey": sku_key,
@@ -750,6 +752,9 @@ class WinthorClient:
                 "sellPrice": round(preco_final, 4),  # Arredonda preço calculado
                 "position": seq,
             }
+            
+            if original:
+                item_payload["realCost"] = round(float(original), 4)
             itens_winthor.append(item_payload)
             seq += 1
 

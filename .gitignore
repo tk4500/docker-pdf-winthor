@@ -1,3 +1,4 @@
 .env
 temp.py
 app/random.json
+.vscode/settings.json

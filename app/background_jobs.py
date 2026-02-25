@@ -29,7 +29,7 @@ def avanca_fluxo_automatico(job: Job, db: Session, user: models.User = None):
     # Se validou com sucesso, tenta enviar
     if job.status_global == "VALIDADO":
         try:
-            finalizar_envio_winthor(job.id, db, user)
+            finalizar_envio_winthor(job.id, db, None, user)
         except:
             pass # Erro já tratado dentro da função
 

@@ -643,24 +643,35 @@ class WinthorClient:
         1. Conversão de Unidade (Unitário -> Caixa) via tabela ProdutoConversao.
         2. Atualização de EAN (Usa o que está no banco, ignora o do JSON).
         """
-        if not self.token:
-            self.authenticate()
-
+        try:
+            if not self.token:
+                self.authenticate()
+        except Exception as e:
+            logger.error(f"Erro ao autenticar antes de enviar pedido: {e}")
+            raise Exception("Falha na autenticação com Winthor.")
         url = f"{self.base_url}/api/wholesale/v1/orders/"
 
         # 1. Preparar Cabeçalho
-        cliente_dados = pedido_validado.get("dados_cliente", {})
-        id_cliente = cliente_dados.get("id_winthor")
+        try:
+            cliente_dados = pedido_validado.get("dados_cliente", {})
+            id_cliente = cliente_dados.get("id_winthor")
+        except Exception as e:
+            logger.error(f"Erro ao extrair dados do cliente do pedido: {e}")
+            raise Exception("Dados do cliente inválidos ou ausentes no pedido.")
 
         cliente_db = self.db.query(Cliente).filter(Cliente.id == id_cliente).first()
         if not cliente_db:
             raise Exception(f"Cliente {id_cliente} não encontrado no banco local.")
-
-        chargingId = (
-            cliente_dados.get("chargingId")
-            if cliente_dados.get("chargingId")
-            else cliente_db.chargingId
-        )
+        try:
+            chargingId = (
+                cliente_dados.get("chargingId")
+                if cliente_dados.get("chargingId")
+                else cliente_db.chargingId
+            )
+        except Exception as e:
+            logger.error(f"Erro ao determinar chargingId para cliente {id_cliente}: {e}")
+            raise Exception("Não foi possível determinar chargingId para o cliente do pedido.")
+        
         sellerId = cliente_db.sellerId if cliente_db.sellerId else 0
         plano_pag = cliente_db.plano_pag_padrao if cliente_db.plano_pag_padrao else 1
 
@@ -749,8 +760,8 @@ class WinthorClient:
         sale_type = (
             5 if pedido_validado.get("is_bonificacao") else 1
         )  # Req 8: Bonificação
-
-        payload = {
+        try:
+            payload = {
             "branchId": str(self.branch_id),
             "customer": {"id": int(id_cliente)},
             "saleOrigin": "F",
@@ -762,7 +773,10 @@ class WinthorClient:
             "seller": sellerId,
             "observation": f"PED {pedido_validado.get('numero_pedido')}",
             "trackingNumber": pedido_validado.get('numero_pedido'),
-        }
+            }
+        except Exception as e:
+            logger.error(f"Erro ao montar payload para envio do pedido: {e}")
+            raise Exception("Falha ao preparar dados do pedido para envio.")
 
         # 4. Enviar
         logger.info(
@@ -776,6 +790,7 @@ class WinthorClient:
                 response = self.session.post(url, json=payload)
 
             if not response.ok:
+                logger.error(f"Erro ao enviar pedido: {response}")
                 raise Exception(f"Erro Winthor {response.status_code}: {response.text}")
 
             return response.json()

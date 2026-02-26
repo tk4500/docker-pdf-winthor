@@ -77,7 +77,7 @@ def finalizar_envio_winthor(job_id: str, db: Session, pedido_manual: dict = None
         
         # Pega o payload. Se veio manual (finalizar_pedido endpoint) usa ele, senão pega do banco
         payload_final = pedido_manual if pedido_manual else job.resultado_json['pedidos'][0]
-        
+        logger.info(f"Payload final para envio do job {job.id}: {payload_final}")
         client = WinthorClient(db, user)
         # Req 8: Passa flag de bonificação
         client.is_bonificacao = job.is_bonificacao 

@@ -381,7 +381,7 @@ class WinthorClient:
                         p_id = int(item.get("id"))
 
                         # Tenta pegar EAN de varios lugares
-                        ean = str(item.get("barCode") or "")
+                        ean = item.get("barCode")
 
                         produto_db = (
                             self.db.query(Produto).filter(Produto.id == p_id).first()
@@ -389,16 +389,22 @@ class WinthorClient:
 
                         if produto_db:
                             # Update
-                            produto_db.nome = item.get("name") or item.get("title")
-                            produto_db.ean = ean
-                            produto_db.unidade = item.get("unity") or "UN"
+                            if item.get("name"):
+                                produto_db.nome = item.get("name")
+                            else:
+                                if item.get("title"):
+                                    produto_db.nome = item.get("title")
+                            if ean: 
+                                produto_db.ean = ean
+                            if item.get("unity"):
+                                produto_db.unidade = item.get("unity")
                             self.db.commit()
                         else:
                             # Insert
                             novo_prod = Produto(
                                 id=p_id,
                                 nome=item.get("name") or item.get("title"),
-                                ean=ean,
+                                ean=ean or "",
                                 unidade=item.get("unity") or "UN",
                             )
                             self.db.add(novo_prod)

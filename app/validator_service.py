@@ -84,9 +84,7 @@ class OrderValidator:
             
             if id_raw:
                 prod_db = self.db.query(Produto).filter(Produto.id == int(id_raw)).first()
-            if not prod_db and ean:
-                prod_db = self.db.query(Produto).filter(Produto.ean == ean).first()
-
+                
             if not prod_db and cliente_db:
                 alias_db = self.db.query(ProdutoAlias).filter(
                     ProdutoAlias.id_cliente == cliente_db.id,
@@ -95,6 +93,10 @@ class OrderValidator:
                 if alias_db:
                     prod_db = self.db.query(Produto).filter(Produto.id == alias_db.id_produto).first()
                     item_msgs.append("Produto encontrado via Alias")
+            if not prod_db and ean:
+                prod_db = self.db.query(Produto).filter(Produto.ean == ean).first()
+
+            
 
             if prod_db:
                 id_produto_winthor = prod_db.id

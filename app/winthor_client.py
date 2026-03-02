@@ -691,6 +691,7 @@ class WinthorClient:
 
             qtd_inicial = float(item.get("quantidade_total", 0))
             preco_inicial = float(item.get("valor_unitario", 0))
+            valor_total = float(item.get("valor_total", 0))
 
             # --- REGRA 2: Conversão de Unidades (O Caso Chamyto) ---
             # Verifica se existe regra de conversão para este produto
@@ -723,6 +724,12 @@ class WinthorClient:
                 id_final = regra_conv.id_produto_destino
                 qtd_final = qtd_convertida
                 preco_final = preco_inicial * regra_conv.fator
+                valor_unitario_ajustado = valor_total / qtd_final if qtd_final > 0 else preco_final
+                if abs(valor_unitario_ajustado - preco_final) > 0.01:  # Se o ajuste for significativo, loga
+                    logger.info(
+                        f"Ajuste de preço no item {id_origem}: Unitário original {preco_final:.2f} -> Ajustado {valor_unitario_ajustado:.2f} para manter valor total."
+                    )
+                preco_final = valor_unitario_ajustado
 
             # --- REGRA 1: Force EAN do Banco ---
             # Busca o produto FINAL (já convertido) no banco para pegar o EAN mais atual
@@ -750,14 +757,26 @@ class WinthorClient:
             item_payload = {
                 "productSKUERPReferenceKey": sku_key,
                 "quantity": qtd_final,
-                "sellPrice": round(preco_final, 4),  # Arredonda preço calculado
+                "sellPrice": round(preco_final, 8),  # Arredonda preço calculado
                 "position": seq,
             }
             
             if original:
-                item_payload["realCost"] = round(float(original), 4)
+                item_payload["realCost"] = round(float(original), 8)
+                discount = (preco_final - float(original)) * 100 / float(original)  if float(original) > 0 else 0
+                if discount > 5:  # Loga desconto se for significativo
+                    logger.info(f"Desconto significativo no item {id_final}: {discount:.2f}%")
+                item_payload["discountValue"] = round(discount, 6)
             itens_winthor.append(item_payload)
             seq += 1
+            
+        total = pedido_validado.get("totais", {}).get("pdf", 0)
+        if total and total > 0:
+            payload_total = sum(i["quantity"] * i["sellPrice"] for i in itens_winthor)
+            if abs(payload_total - total) > 0.10:
+                logger.info(f"Ajuste de preço total: Payload {payload_total:.2f} vs Total Pedido {total:.2f}.")
+        total = round(payload_total, 2) if payload_total > 0 else total
+            
 
         if not itens_winthor:
             raise Exception("Nenhum item válido gerado após validação e conversão.")
@@ -766,6 +785,8 @@ class WinthorClient:
         sale_type = (
             5 if pedido_validado.get("is_bonificacao") else 1
         )  # Req 8: Bonificação
+        
+        unique_id = "".join(c for c in pedido_validado.get('numero_pedido') if c.isdigit())
         try:
             payload = {
             "branchId": str(self.branch_id),
@@ -778,8 +799,14 @@ class WinthorClient:
             "listOfOrderItem": itens_winthor,
             "seller": sellerId,
             "observation": f"PED {pedido_validado.get('numero_pedido')}",
-            "trackingNumber": pedido_validado.get('numero_pedido'),
+            "shippingTrackingCodeSale": pedido_validado.get('numero_pedido'),
             }
+            if unique_id:
+                payload["uniqueSequencialNumber"] = unique_id
+            if data_atual:
+                payload["dateUniqueSequentialNumber"] = data_atual
+            if total and total > 0:
+                payload["TotalPrice"] = total
         except Exception as e:
             logger.error(f"Erro ao montar payload para envio do pedido: {e}")
             raise Exception("Falha ao preparar dados do pedido para envio.")

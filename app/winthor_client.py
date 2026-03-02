@@ -816,7 +816,7 @@ class WinthorClient:
             f"Enviando pedido Winthor (Bonif={pedido_validado.get('is_bonificacao')}). Itens: {len(itens_winthor)}"
         )
         try:
-            logger.info(f"Payload do pedido para Winthor: {json.dumps(payload, indent=2)}")
+            # logger.info(f"Payload do pedido para Winthor: {json.dumps(payload, indent=2)}")
             response = self.session.post(url, json=payload)
 
             if response.status_code == 401:

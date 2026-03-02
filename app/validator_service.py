@@ -45,14 +45,14 @@ class OrderValidator:
             cliente_db = self.db.query(Cliente).filter(Cliente.id == pedido['dados_cliente'].get('id_winthor')).first()
             cnpj_cliente = cliente_db.cnpj_cpf if cliente_db else pedido.get('dados_cliente', {}).get('cnpj_original')
             if not cliente_db:
-                cliente_db = self.db.query(Cliente).filter(Cliente.cnpj_cpf.ilike(cnpj_cliente[:12])).first()  # Tenta buscar por CNPJ sem os últimos dígitos
+                cliente_db = self.db.query(Cliente).filter(Cliente.cnpj_cpf.ilike(f"%{cnpj_cliente[:12]}%")).first()  # Tenta buscar por CNPJ sem os últimos dígitos
                 if cliente_db:
                     cnpj_cliente = cliente_db.cnpj_cpf
         else:
             cnpj_cliente = "".join(filter(str.isdigit, pedido.get('cliente', {}).get('cnpj_cpf', '')))
-            cliente_db = self.db.query(Cliente).filter(Cliente.cnpj_cpf == cnpj_cliente).first()
+            cliente_db = self.db.query(Cliente).filter(Cliente.cnpj_cpf.ilike(f"%{cnpj_cliente}%")).first()
             if not cliente_db:
-                cliente_db = self.db.query(Cliente).filter(Cliente.cnpj_cpf.ilike(cnpj_cliente[:12])).first()  # Tenta buscar por CNPJ sem os últimos dígitos
+                cliente_db = self.db.query(Cliente).filter(Cliente.cnpj_cpf.ilike(f"%{cnpj_cliente[:12]}%")).first()  # Tenta buscar por CNPJ sem os últimos dígitos
                 if cliente_db:
                     cnpj_cliente = cliente_db.cnpj_cpf
         # 1. Validar Cliente

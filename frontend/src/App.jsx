@@ -2,8 +2,9 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Upload from './pages/Upload';       // <--- Importe
+import PedidoEdit from './pages/PedidoEdit'; // <--- Importe
 
-// Componente para proteger rotas (Só acessa se tiver token)
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   return token ? children : <Navigate to="/login" />;
@@ -15,15 +16,21 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         
-        {/* Rotas Protegidas */}
-        <Route 
-          path="/" 
-          element={
-            <PrivateRoute>
-              <Dashboard />
-            </PrivateRoute>
-          } 
-        />
+        {/* Dashboard */}
+        <Route path="/" element={
+          <PrivateRoute><Dashboard /></PrivateRoute>
+        } />
+
+        {/* Upload Novo */}
+        <Route path="/upload" element={
+          <PrivateRoute><Upload /></PrivateRoute>
+        } />
+
+        {/* Edição do Pedido (Recebe o ID do job) */}
+        <Route path="/pedido/:id" element={
+          <PrivateRoute><PedidoEdit /></PrivateRoute>
+        } />
+
       </Routes>
     </BrowserRouter>
   );

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
-import { FileText, LogOut, RefreshCw, AlertCircle } from "lucide-react";
+import { FileText, LogOut, RefreshCw, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { Plus } from "lucide-react";
 
 export default function Dashboard() {
@@ -21,7 +21,8 @@ export default function Dashboard() {
       const unfinishedJobs = response.data.items.filter(
         (job) =>
           job.status_global !== "ENVIADO_WINTHOR" &&
-          job.status_global !== "CANCELADO",
+          job.status_global !== "CANCELADO" &&
+          job.status_global !== "MULTIPLOS_PEDIDOS_DETECTADOS",
       );
 
       setJobs(unfinishedJobs);
@@ -48,6 +49,22 @@ export default function Dashboard() {
       return "bg-yellow-100 text-yellow-800";
     if (status === "VALIDADO") return "bg-green-100 text-green-800";
     return "bg-blue-100 text-blue-800"; // Pendente, processando, etc
+  };
+
+  const handleCancelJob = async (e, jobId) => {
+    e.stopPropagation(); // Evita que clique no botão abra a tela de edição do pedido
+
+    if (!window.confirm("Tem certeza que deseja CANCELAR este pedido? Ele não será enviado ao Winthor.")) {
+      return;
+    }
+
+    try {
+      await api.delete(`/pedidos/${jobId}`);
+      // Atualiza a lista automaticamente após cancelar
+      fetchJobs();
+    } catch (error) {
+      alert("Erro ao cancelar o pedido: " + (error.response?.data?.detail || error.message));
+    }
   };
 
   return (
@@ -134,6 +151,20 @@ export default function Dashboard() {
                         >
                           {job.status_global.replace(/_/g, " ")}
                         </p>
+                        <div className="ml-2 flex-shrink-0 flex">
+                          <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(job.status_global)}`}>
+                            {job.status_global.replace(/_/g, ' ')}
+                          </p>
+
+                          {/* Botão de Cancelar */}
+                          <button
+                            onClick={(e) => handleCancelJob(e, job.id)}
+                            className="ml-4 text-red-400 hover:text-red-600 transition-colors"
+                            title="Cancelar Pedido"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                     <div className="mt-2 sm:flex sm:justify-between">

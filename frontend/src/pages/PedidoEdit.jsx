@@ -3,14 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import ProductSearch from '../components/ProductSearch';
 import ClientSearch from '../components/ClientSearch';
-import { Save, ArrowLeft, AlertCircle, CheckCircle, Edit3 } from 'lucide-react';
+import { Save, ArrowLeft, AlertCircle, CheckCircle, Edit3, Plus, Trash2 } from 'lucide-react';
 
 export default function PedidoEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
   const [pedido, setPedido] = useState(null);
-  
+
   // Controle de opções de envio
   const [options, setOptions] = useState({
     is_bonificacao: false,
@@ -28,7 +28,7 @@ export default function PedidoEdit() {
     try {
       const { data } = await api.get(`/pedidos/status/${id}`);
       setJob(data);
-      
+
       // Carrega as opções do banco
       setOptions({
         is_bonificacao: data.resultado?.is_bonificacao || false,
@@ -74,6 +74,33 @@ export default function PedidoEdit() {
     setPedido({ ...pedido, itens: novosItens });
   };
 
+  // Remove um item do array
+  const removeItem = (index) => {
+    if (!window.confirm("Remover este item do pedido?")) return;
+
+    const novosItens = [...pedido.itens];
+    novosItens.splice(index, 1); // Remove 1 elemento na posição index
+    setPedido({ ...pedido, itens: novosItens });
+  };
+
+  // Adiciona uma linha em branco no final
+  const addNewItem = () => {
+    const newItem = {
+      descricao: "Item Adicionado Manualmente",
+      codigo_referencia: "",
+      ean: "",
+      id_produto_winthor: null,
+      descricao_winthor: "",
+      quantidade_total: 1,
+      valor_unitario: 0.00,
+      valor_total_calculado: 0.00,
+      status_item: "CORRIGIDO_MANUAL",
+      mensagens: ["Adicionado pelo usuário"]
+    };
+
+    setPedido({ ...pedido, itens: [...pedido.itens, newItem] });
+  };
+
   const handleProductSelect = (index, prodWinthor) => {
     const novosItens = [...pedido.itens];
     novosItens[index].id_produto_winthor = prodWinthor.id;
@@ -85,9 +112,9 @@ export default function PedidoEdit() {
   const handleSaveAndSend = async () => {
     setSaving(true);
     try {
-      await api.post(`/pedidos/finalizar/${id}`, { 
+      await api.post(`/pedidos/finalizar/${id}`, {
         pedido: pedido,
-        options: options 
+        options: options
       });
       alert("Pedido enviado com sucesso para o Winthor!");
       navigate('/');
@@ -128,13 +155,13 @@ export default function PedidoEdit() {
         <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
           <Edit3 className="w-5 h-5 mr-2 text-blue-600" /> Dados Principais do Pedido
         </h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          
+
           {/* Número do Pedido */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Número do Pedido (PDF)</label>
-            <input 
+            <input
               type="text"
               value={pedido.numero_pedido || ''}
               onChange={(e) => updatePedidoHeader('numero_pedido', e.target.value)}
@@ -145,10 +172,10 @@ export default function PedidoEdit() {
           {/* Busca de Cliente */}
           <div className="lg:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Cliente 
+              Cliente
               {!pedido.dados_cliente?.id_winthor && <span className="text-red-500 ml-2 font-bold">(Não Vinculado!)</span>}
             </label>
-            <ClientSearch 
+            <ClientSearch
               initialValue={pedido.dados_cliente?.id_winthor ? `${pedido.dados_cliente.id_winthor} - ${pedido.dados_cliente.razao_social}` : pedido.dados_cliente?.razao_social || ''}
               onSelect={updateClient}
             />
@@ -157,10 +184,10 @@ export default function PedidoEdit() {
           {/* Opções de Envio (Bonificação) */}
           <div className="flex flex-col justify-end pb-2">
             <label className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 checked={options.is_bonificacao}
-                onChange={(e) => setOptions({...options, is_bonificacao: e.target.checked})}
+                onChange={(e) => setOptions({ ...options, is_bonificacao: e.target.checked })}
                 className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
               />
               <span className="text-sm font-medium text-gray-700">Bonificação (SaleType 5)</span>
@@ -177,7 +204,7 @@ export default function PedidoEdit() {
           <div>
             <span className="text-gray-500 block">Soma dos Itens Atual</span>
             <span className={`font-bold text-lg ${Math.abs(diferenca) > 0.5 ? 'text-red-600' : 'text-green-600'}`}>
-                R$ {totalCalculado.toFixed(2)}
+              R$ {totalCalculado.toFixed(2)}
             </span>
           </div>
           <div>
@@ -198,12 +225,13 @@ export default function PedidoEdit() {
               <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vlr Unit.</th>
               <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
               <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200 text-sm">
             {pedido.itens.map((item, idx) => {
               const hasError = item.status_item !== 'OK' && item.status_item !== 'CORRIGIDO_AUTO' && item.status_item !== 'CORRIGIDO_MANUAL';
-              
+
               return (
                 <tr key={idx} className={hasError ? 'bg-red-50' : 'hover:bg-gray-50'}>
                   {/* Descrição Original do PDF */}
@@ -214,7 +242,7 @@ export default function PedidoEdit() {
 
                   {/* Busca Winthor */}
                   <td className="px-3 py-3">
-                    <ProductSearch 
+                    <ProductSearch
                       initialValue={item.id_produto_winthor ? `${item.id_produto_winthor} - ${item.descricao_winthor || ''}` : ''}
                       onSelect={(prod) => handleProductSelect(idx, prod)}
                     />
@@ -223,16 +251,16 @@ export default function PedidoEdit() {
 
                   {/* Inputs Editáveis */}
                   <td className="px-3 py-3 text-right">
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       className="w-20 border border-gray-300 rounded p-1 text-right focus:ring-blue-500 focus:border-blue-500"
                       value={item.quantidade_total}
                       onChange={(e) => updateItem(idx, 'quantidade_total', e.target.value)}
                     />
                   </td>
                   <td className="px-3 py-3 text-right">
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       className="w-24 border border-gray-300 rounded p-1 text-right focus:ring-blue-500 focus:border-blue-500"
                       step="0.01"
                       value={item.valor_unitario}
@@ -242,7 +270,7 @@ export default function PedidoEdit() {
                   <td className="px-3 py-3 text-right font-bold text-gray-700">
                     {parseFloat(item.valor_total_calculado || 0).toFixed(2)}
                   </td>
-                  
+
                   {/* Status */}
                   <td className="px-3 py-3 text-center">
                     {hasError ? (
@@ -256,11 +284,30 @@ export default function PedidoEdit() {
                       <CheckCircle className="text-green-500 w-5 h-5 mx-auto" />
                     )}
                   </td>
+                  {/* Ações: Botão Remover (NOVA) */}
+                  <td className="px-3 py-3 text-center">
+                    <button
+                      onClick={() => removeItem(idx)}
+                      className="text-red-400 hover:text-red-600 transition-colors"
+                      title="Remover Item"
+                    >
+                      <Trash2 className="w-5 h-5 mx-auto" />
+                    </button>
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+        {/* Botão de Adicionar Item Manual */}
+        <div className="bg-gray-50 border-t border-gray-200 p-4">
+          <button
+            onClick={addNewItem}
+            className="flex items-center text-sm text-blue-600 font-bold hover:text-blue-800 transition-colors"
+          >
+            <Plus className="w-4 h-4 mr-1" /> Adicionar Produto Manualmente
+          </button>
+        </div>
       </div>
     </div>
   );

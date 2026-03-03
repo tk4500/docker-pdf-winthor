@@ -179,7 +179,7 @@ export default function PedidoManual() {
       </div>
 
       {/* 2. Tabela de Produtos */}
-      <div className={`bg-white shadow rounded-lg overflow-hidden transition-opacity ${!pedido.cliente ? 'opacity-50 pointer-events-none' : ''}`}>
+      <div className={`bg-white shadow rounded-lg overflow-visible transition-opacity ${!pedido.cliente ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
           <h3 className="text-lg font-bold text-gray-800">2. Itens do Pedido</h3>
           <span className="font-bold text-xl text-green-700">Total: R$ {totalPedido.toFixed(2)}</span>

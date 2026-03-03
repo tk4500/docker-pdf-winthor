@@ -14,6 +14,10 @@ class UserCreate(BaseModel):
     password: str
     email: Optional[str] = None
     role: str = "operador"
+    
+class PrecoRequest(BaseModel):
+    cliente_id: int
+    produto_id: int
 
 class RoleCreate(BaseModel):
     name: str

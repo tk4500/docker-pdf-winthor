@@ -163,6 +163,25 @@ def set_config(config: schemas.ConfigItem, db: Session = Depends(get_db)):
     db.commit()
     return {"msg": "Configuração salva"}
 
+@app.post("/produtos/preco", tags=["Busca"], dependencies=[Depends(get_current_user), Depends(PermissionChecker("produtos:preco"))])
+def buscar_preco_produto(
+    payload: schemas.PrecoRequest, 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Busca o preço padrão de um produto considerando a Região do Cliente.
+    """
+    winthor_client = WinthorClient(db, current_user=current_user)
+    
+    # Chama o método que você já criou no WinthorClient
+    preco = winthor_client.get_price_from_id(payload.produto_id, payload.cliente_id)
+    
+    if preco is None:
+        return {"preco": 0.0, "encontrado": False}
+    
+    return {"preco": preco, "encontrado": True}
+
 @app.get("/admin/configs", tags=["Admin"], dependencies=[Depends(PermissionChecker("config:view"))])
 def list_configs(db: Session = Depends(get_db)):
     return db.query(models.Configuracao).all()

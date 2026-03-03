@@ -22,7 +22,7 @@ export default function ProductSearch({ onSelect, initialValue }) {
 
     setLoading(true);
     try {
-      const { data } = await api.get(`/produtos/busca?termo=${termo}`);
+      const { data } = await api.get(`/produtos/busca?termo=${encodeURI(termo)}`);
       setResults(data);
       setShowDropdown(true);
     } catch (error) {

@@ -14,31 +14,32 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
-  # --- Inteligência Artificial (Ollama) ---
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   container_name: winthor_ollama
-  #   ports:
-  #     - "11434:11434"
-  #   volumes:
-  #     - ollama_data:/root/.ollama
-    # No Windows/Mac sem GPU dedicada exposta, rodará na CPU (funcional para testes)
-
   # --- Backend (Sua Aplicação) ---
+
   backend:
-    build: .
+    build: 
+      context: ./backend # Aponta para a pasta do backend
     container_name: winthor_backend
+    restart: always
     ports:
       - "8000:8000"
     depends_on:
       - db
-      #- ollama
     env_file:
       - .env
     volumes:
-      - ./app:/app  # Permite editar código no Windows e atualizar no Docker na hora
+      - ./backend:/app # Para hot-reload durante o desenvolvimento
+
+  frontend:
+    build:
+      context: ./frontend # Aponta para a pasta do frontend
+    container_name: winthor_frontend
+    restart: always
+    ports:
+      - "80:80" # Porta Web padrão
+    depends_on:
+      - backend
+
 
 volumes:
   postgres_data:
-#  ollama_data:

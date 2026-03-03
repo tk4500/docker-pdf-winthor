@@ -21,6 +21,7 @@ from auth import (
     get_current_admin, 
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
+from fastapi.middleware.cors import CORSMiddleware
 
 # Serviços e Workers
 from winthor_client import WinthorClient
@@ -33,6 +34,13 @@ from background_jobs import processar_arquivo_background, job_enriquecer_produto
 # Inicialização
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Winthor PDF Parser API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Em produção, coloque o domínio/IP do seu site, ex: ["http://seu-ip.com"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 logger = logging.getLogger("API")
 logging.basicConfig(level=logging.INFO)
 # ==============================================================================
@@ -411,7 +419,7 @@ def list_jobs_filtered(
     if user.role.name != "Administrador" and user.role.name != "Auditor":
         query = query.filter(models.ProcessamentoPedido.user_id == user.id)
     
-    if filtro.status: query = query.filter(models.ProcessamentoPedido.status_global == filtro.status)
+    if filtro.status: query = query.filter(models.ProcessamentoPedido.status_global == filtro.status).order_by(models.ProcessamentoPedido.data_criacao.desc())
     
     # Filtra apenas pais ou filhos independentes (para não poluir a lista com o pai que splitou)
     # Opcional: mostrar tudo

@@ -31,7 +31,6 @@ class ParserFactory:
     Valor = Classe do Parser
     """
     _registry = {
-        "01788517000150": TemplateVencedorAtacadista()  # CNPJ do Sulfrios (Exemplo)
     }
 
     @staticmethod

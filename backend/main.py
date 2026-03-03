@@ -33,7 +33,7 @@ from background_jobs import processar_arquivo_background, job_enriquecer_produto
 
 # Inicialização
 models.Base.metadata.create_all(bind=engine)
-app = FastAPI(title="Winthor PDF Parser API")
+app = FastAPI(title="Winthor PDF Parser API", root_path="/api")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Em produção, coloque o domínio/IP do seu site, ex: ["http://seu-ip.com"]

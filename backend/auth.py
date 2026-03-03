@@ -16,8 +16,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 horas
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-# Quando usamos proxy reverso, o FastAPI precisa saber o caminho absoluto para o Swagger funcionar
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # --- Utilitários de Senha ---
 def verify_password(plain_password, hashed_password):

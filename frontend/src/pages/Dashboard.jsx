@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
-import { FileText, LogOut, RefreshCw, AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { FileText, LogOut, RefreshCw, AlertCircle, Plus, Trash2, Keyboard } from 'lucide-react';
 
 export default function Dashboard() {
   const [jobs, setJobs] = useState([]);

@@ -1,0 +1,15 @@
+# Substitua pelo seu domínio real
+tkplayer.run.place {
+    # Habilita compressão gzip para o site carregar rápido
+    encode gzip
+
+    # 1. Rota da API: Tudo que começa com /api vai para o Backend
+    handle_path /api/* {
+        reverse_proxy backend:8000
+    }
+
+    # 2. Rota do Frontend: Todo o resto vai para o Frontend
+    handle /* {
+        reverse_proxy frontend:80
+    }
+}

@@ -1,6 +1,22 @@
 version: '3.8'
 
 services:
+  # --- O Caddy é o "Porteiro" (Recebe HTTPS e manda para dentro) ---
+  caddy:
+    image: caddy:alpine
+    container_name: winthor_caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+
   # --- Banco de Dados ---
   db:
     image: postgres:15-alpine
@@ -10,36 +26,39 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+    # Porta interna apenas, não precisa expor para fora em produção se não quiser
     ports:
-      - "5432:5432"
+      - "5432:5432" 
     volumes:
       - postgres_data:/var/lib/postgresql/data
-  # --- Backend (Sua Aplicação) ---
 
+  # --- Backend ---
   backend:
     build: 
-      context: ./backend # Aponta para a pasta do backend
+      context: ./backend
     container_name: winthor_backend
     restart: always
-    ports:
-      - "8000:8000"
+    # Não expomos portas para fora, o Caddy conversa com ele internamente
+    expose:
+      - "8000"
     depends_on:
       - db
     env_file:
       - .env
-    volumes:
-      - ./backend:/app # Para hot-reload durante o desenvolvimento
 
+  # --- Frontend ---
   frontend:
     build:
-      context: ./frontend # Aponta para a pasta do frontend
+      context: ./frontend
     container_name: winthor_frontend
     restart: always
-    ports:
-      - "80:80" # Porta Web padrão
+    # Não expomos portas para fora, o Caddy conversa com ele internamente
+    expose:
+      - "80"
     depends_on:
       - backend
 
-
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

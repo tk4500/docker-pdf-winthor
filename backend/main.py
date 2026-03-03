@@ -120,7 +120,11 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Usuário já existe")
     
     hashed = get_password_hash(user.password)
-    new_user = models.User(username=user.username, hashed_password=hashed, email=user.email)
+    role = db.query(models.Role).filter(models.Role.name == user.role).first()
+    if not role:
+        new_user = models.User(username=user.username, hashed_password=hashed, email=user.email, role_id=4) # Role padrão, pode ser ajustada depois
+    else:
+        new_user = models.User(username=user.username, hashed_password=hashed, email=user.email, role=role)
     db.add(new_user)
     db.commit()
     return {"status": "Usuário criado", "username": new_user.username}

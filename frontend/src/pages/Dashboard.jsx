@@ -21,6 +21,7 @@ export default function Dashboard() {
         (job) =>
           job.status_global !== "ENVIADO_WINTHOR" &&
           job.status_global !== "CANCELADO" &&
+          job.status_global !== "CANCELADO_WINTHOR" &&
           job.status_global !== "MULTIPLOS_PEDIDOS_DETECTADOS",
       );
 
@@ -145,25 +146,18 @@ export default function Dashboard() {
                         {job.nome_arquivo}
                       </p>
                       <div className="ml-2 flex-shrink-0 flex">
-                        <p
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(job.status_global)}`}
-                        >
-                          {job.status_global.replace(/_/g, " ")}
+                        <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(job.status_global)}`}>
+                          {job.status_global.replace(/_/g, ' ')}
                         </p>
-                        <div className="ml-2 flex-shrink-0 flex">
-                          <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(job.status_global)}`}>
-                            {job.status_global.replace(/_/g, ' ')}
-                          </p>
 
-                          {/* Botão de Cancelar */}
-                          <button
-                            onClick={(e) => handleCancelJob(e, job.id)}
-                            className="ml-4 text-red-400 hover:text-red-600 transition-colors"
-                            title="Cancelar Pedido"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </div>
+                        {/* Botão de Cancelar */}
+                        <button
+                          onClick={(e) => handleCancelJob(e, job.id)}
+                          className="ml-4 text-red-400 hover:text-red-600 transition-colors"
+                          title="Cancelar Pedido"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
                       </div>
                     </div>
                     <div className="mt-2 sm:flex sm:justify-between">

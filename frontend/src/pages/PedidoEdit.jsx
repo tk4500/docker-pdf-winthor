@@ -3,18 +3,19 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import ProductSearch from '../components/ProductSearch';
 import ClientSearch from '../components/ClientSearch';
-import { Save, ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
+import { Save, ArrowLeft, AlertCircle, CheckCircle, Edit3 } from 'lucide-react';
 
 export default function PedidoEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
-  const [pedido, setPedido] = useState(null); // O JSON editável
+  const [pedido, setPedido] = useState(null);
+  
+  // Controle de opções de envio
   const [options, setOptions] = useState({
     is_bonificacao: false,
     force_ai: false
   });
-
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -27,17 +28,19 @@ export default function PedidoEdit() {
     try {
       const { data } = await api.get(`/pedidos/status/${id}`);
       setJob(data);
-      // Se tiver JSON de resultado, pega o primeiro pedido da lista
-
+      
+      // Carrega as opções do banco
       setOptions({
         is_bonificacao: data.resultado?.is_bonificacao || false,
         force_ai: data.resultado?.force_ai || false
       });
+
       if (data.resultado && data.resultado.pedidos && data.resultado.pedidos.length > 0) {
         setPedido(data.resultado.pedidos[0]);
       }
     } catch (error) {
-      alert("Erro ao carregar pedido");
+      console.error(error);
+      alert("Erro ao carregar pedido. Veja o console.");
     } finally {
       setLoading(false);
     }
@@ -58,36 +61,34 @@ export default function PedidoEdit() {
       }
     });
   };
-  // Atualiza um campo de um item específico
+
   const updateItem = (index, field, value) => {
     const novosItens = [...pedido.itens];
     novosItens[index][field] = value;
 
-    // Recalcula total da linha se mudar qtd ou preço
     if (field === 'quantidade_total' || field === 'valor_unitario') {
       const qtd = parseFloat(novosItens[index].quantidade_total) || 0;
       const val = parseFloat(novosItens[index].valor_unitario) || 0;
       novosItens[index].valor_total_calculado = (qtd * val).toFixed(2);
     }
-
     setPedido({ ...pedido, itens: novosItens });
   };
 
-  // Quando seleciona um produto no autocomplete
   const handleProductSelect = (index, prodWinthor) => {
     const novosItens = [...pedido.itens];
     novosItens[index].id_produto_winthor = prodWinthor.id;
-    novosItens[index].descricao_winthor = prodWinthor.nome; // Apenas visual
-    novosItens[index].status_item = "CORRIGIDO_MANUAL"; // Marca que o user mexeu
-
+    novosItens[index].descricao_winthor = prodWinthor.nome;
+    novosItens[index].status_item = "CORRIGIDO_MANUAL";
     setPedido({ ...pedido, itens: novosItens });
   };
 
   const handleSaveAndSend = async () => {
     setSaving(true);
     try {
-      // Envia o JSON corrigido para finalizar
-      await api.post(`/pedidos/finalizar/${id}`, { pedido: pedido, options: options });
+      await api.post(`/pedidos/finalizar/${id}`, { 
+        pedido: pedido,
+        options: options 
+      });
       alert("Pedido enviado com sucesso para o Winthor!");
       navigate('/');
     } catch (error) {
@@ -97,26 +98,25 @@ export default function PedidoEdit() {
     }
   };
 
-  if (loading) return <div className="p-10 text-center">Carregando...</div>;
-  if (!pedido) return <div className="p-10 text-center text-red-500">Erro: Pedido sem dados JSON.</div>;
+  if (loading) return <div className="p-10 text-center text-gray-600">Carregando dados do pedido...</div>;
+  if (!pedido) return <div className="p-10 text-center text-red-500 font-bold">Erro: Pedido sem dados JSON válidos.</div>;
 
-  // Cálculos de Totais
   const totalPdf = parseFloat(pedido.totais?.pdf || 0);
   const totalCalculado = pedido.itens.reduce((acc, item) => acc + (parseFloat(item.valor_total_calculado) || 0), 0);
   const diferenca = totalPdf - totalCalculado;
 
-return (
+  return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Cabeçalho */}
       <div className="flex justify-between items-center mb-6">
-        <button onClick={() => navigate('/')} className="flex items-center text-gray-600 hover:text-blue-600">
+        <button onClick={() => navigate('/')} className="flex items-center text-gray-600 hover:text-blue-600 font-medium">
           <ArrowLeft className="w-5 h-5 mr-1" /> Voltar
         </button>
         <div className="flex items-center space-x-4">
           <button
             onClick={handleSaveAndSend}
             disabled={saving}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md shadow flex items-center font-bold"
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md shadow flex items-center font-bold transition-colors disabled:bg-green-300"
           >
             {saving ? 'Enviando...' : <><Save className="w-5 h-5 mr-2" /> Finalizar Pedido</>}
           </button>
@@ -126,7 +126,7 @@ return (
       {/* Caixa de Edição do Cabeçalho do Pedido */}
       <div className="bg-white p-6 rounded-lg shadow mb-6 border-t-4 border-blue-600">
         <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-          <Edit3 className="w-5 h-5 mr-2" /> Dados do Pedido
+          <Edit3 className="w-5 h-5 mr-2 text-blue-600" /> Dados Principais do Pedido
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -138,7 +138,7 @@ return (
               type="text"
               value={pedido.numero_pedido || ''}
               onChange={(e) => updatePedidoHeader('numero_pedido', e.target.value)}
-              className="w-full border rounded p-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
@@ -146,7 +146,7 @@ return (
           <div className="lg:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Cliente 
-              {!pedido.dados_cliente?.id_winthor && <span className="text-red-500 ml-2">(Não Vinculado!)</span>}
+              {!pedido.dados_cliente?.id_winthor && <span className="text-red-500 ml-2 font-bold">(Não Vinculado!)</span>}
             </label>
             <ClientSearch 
               initialValue={pedido.dados_cliente?.id_winthor ? `${pedido.dados_cliente.id_winthor} - ${pedido.dados_cliente.razao_social}` : pedido.dados_cliente?.razao_social || ''}
@@ -155,22 +155,21 @@ return (
           </div>
 
           {/* Opções de Envio (Bonificação) */}
-          <div className="flex flex-col justify-end space-y-2">
-            <label className="flex items-center space-x-2 cursor-pointer">
+          <div className="flex flex-col justify-end pb-2">
+            <label className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
               <input 
                 type="checkbox" 
                 checked={options.is_bonificacao}
                 onChange={(e) => setOptions({...options, is_bonificacao: e.target.checked})}
-                className="w-4 h-4 text-blue-600"
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
               />
               <span className="text-sm font-medium text-gray-700">Bonificação (SaleType 5)</span>
             </label>
           </div>
-
         </div>
 
         {/* Totais Visuais */}
-        <div className="mt-6 pt-4 border-t flex space-x-8 text-sm">
+        <div className="mt-6 pt-4 border-t border-gray-200 flex flex-wrap gap-8 text-sm">
           <div>
             <span className="text-gray-500 block">Total Lido do PDF</span>
             <span className="font-bold text-lg">R$ {totalPdf.toFixed(2)}</span>
@@ -182,18 +181,18 @@ return (
             </span>
           </div>
           <div>
-            <span className="text-gray-500 block">Status Origem</span>
-            <span className="font-bold text-gray-800">{pedido.status_pedido}</span>
+            <span className="text-gray-500 block">Status Validação (Backend)</span>
+            <span className="font-bold text-gray-800 bg-gray-100 px-2 py-1 rounded">{pedido.status_pedido}</span>
           </div>
         </div>
       </div>
 
-      {/* Tabela de Itens (Mesmo código anterior) */}
+      {/* Tabela de Itens */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prod. PDF</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Produto Original (PDF)</th>
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/3">Vínculo Winthor (Busca)</th>
               <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Qtd</th>
               <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vlr Unit.</th>
@@ -204,53 +203,53 @@ return (
           <tbody className="bg-white divide-y divide-gray-200 text-sm">
             {pedido.itens.map((item, idx) => {
               const hasError = item.status_item !== 'OK' && item.status_item !== 'CORRIGIDO_AUTO' && item.status_item !== 'CORRIGIDO_MANUAL';
-
+              
               return (
-                <tr key={idx} className={hasError ? 'bg-red-50' : ''}>
+                <tr key={idx} className={hasError ? 'bg-red-50' : 'hover:bg-gray-50'}>
                   {/* Descrição Original do PDF */}
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-3">
                     <div className="text-gray-900 font-medium">{item.descricao}</div>
-                    <div className="text-xs text-gray-500">Ref: {item.codigo_referencia} | EAN: {item.ean}</div>
+                    <div className="text-xs text-gray-500 mt-1">Ref: {item.codigo_referencia || 'N/A'} | EAN: {item.ean || 'N/A'}</div>
                   </td>
 
                   {/* Busca Winthor */}
-                  <td className="px-3 py-2">
-                    <ProductSearch
+                  <td className="px-3 py-3">
+                    <ProductSearch 
                       initialValue={item.id_produto_winthor ? `${item.id_produto_winthor} - ${item.descricao_winthor || ''}` : ''}
                       onSelect={(prod) => handleProductSelect(idx, prod)}
                     />
-                    {!item.id_produto_winthor && <div className="text-xs text-red-500 mt-1">Vincule um produto!</div>}
+                    {!item.id_produto_winthor && <div className="text-xs font-bold text-red-500 mt-1">⚠ Necessário vincular produto</div>}
                   </td>
 
                   {/* Inputs Editáveis */}
-                  <td className="px-3 py-2 text-right">
-                    <input
-                      type="number"
-                      className="w-16 border rounded p-1 text-right focus:ring-blue-500"
+                  <td className="px-3 py-3 text-right">
+                    <input 
+                      type="number" 
+                      className="w-20 border border-gray-300 rounded p-1 text-right focus:ring-blue-500 focus:border-blue-500"
                       value={item.quantidade_total}
                       onChange={(e) => updateItem(idx, 'quantidade_total', e.target.value)}
                     />
                   </td>
-                  <td className="px-3 py-2 text-right">
-                    <input
-                      type="number"
-                      className="w-20 border rounded p-1 text-right focus:ring-blue-500"
+                  <td className="px-3 py-3 text-right">
+                    <input 
+                      type="number" 
+                      className="w-24 border border-gray-300 rounded p-1 text-right focus:ring-blue-500 focus:border-blue-500"
                       step="0.01"
                       value={item.valor_unitario}
                       onChange={(e) => updateItem(idx, 'valor_unitario', e.target.value)}
                     />
                   </td>
-                  <td className="px-3 py-2 text-right font-bold text-gray-700">
-                    {parseFloat(item.valor_total_calculado).toFixed(2)}
+                  <td className="px-3 py-3 text-right font-bold text-gray-700">
+                    {parseFloat(item.valor_total_calculado || 0).toFixed(2)}
                   </td>
-
+                  
                   {/* Status */}
-                  <td className="px-3 py-2 text-center">
+                  <td className="px-3 py-3 text-center">
                     {hasError ? (
                       <div className="group relative flex justify-center">
                         <AlertCircle className="text-red-500 w-5 h-5 cursor-help" />
-                        <span className="absolute bottom-full mb-2 hidden group-hover:block w-48 bg-black text-white text-xs rounded p-2 z-50">
-                          {item.mensagens?.join(', ') || item.status_item}
+                        <span className="absolute bottom-full mb-2 hidden group-hover:block w-64 bg-gray-900 text-white text-xs rounded p-2 z-50 shadow-lg left-1/2 -translate-x-1/2">
+                          {item.mensagens?.join(' | ') || item.status_item}
                         </span>
                       </div>
                     ) : (

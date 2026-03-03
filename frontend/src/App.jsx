@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Upload from './pages/Upload';       // <--- Importe
 import PedidoEdit from './pages/PedidoEdit'; // <--- Importe
+import PedidoManual from './pages/PedidoManual'; // <--- Importe
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');

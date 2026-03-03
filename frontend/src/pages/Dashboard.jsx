@@ -94,19 +94,30 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-semibold text-gray-800">
-            Pedidos em Andamento
+            Novos Pedidos
           </h2>
 
-          <div className="flex space-x-2">
+          <div className="flex space-x-3">
+
             <button
-              onClick={() => navigate("/upload")} // <--- Botão Novo
-              className="bg-blue-600 text-white px-4 py-2 rounded-md shadow hover:bg-blue-700 flex items-center"
+              onClick={() => navigate('/digitar')}
+              className="bg-green-600 text-white px-4 py-2 rounded-md shadow hover:bg-green-700 flex items-center text-sm font-medium transition-colors"
             >
-              <Plus className="w-4 h-4 mr-2" /> Novo Pedido
+              <Keyboard className="w-4 h-4 mr-2" /> Digitar Pedido
             </button>
 
-            <button onClick={fetchJobs} className="...">
-              ...
+            <button
+              onClick={() => navigate('/upload')}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md shadow hover:bg-blue-700 flex items-center text-sm font-medium transition-colors"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Subir PDF
+            </button>
+
+            <button
+              onClick={fetchJobs}
+              className="bg-white border border-gray-300 px-3 py-2 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>

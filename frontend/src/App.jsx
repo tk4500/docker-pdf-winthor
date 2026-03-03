@@ -15,7 +15,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
-        
+
         {/* Dashboard */}
         <Route path="/" element={
           <PrivateRoute><Dashboard /></PrivateRoute>
@@ -29,6 +29,11 @@ export default function App() {
         {/* Edição do Pedido (Recebe o ID do job) */}
         <Route path="/pedido/:id" element={
           <PrivateRoute><PedidoEdit /></PrivateRoute>
+        } />
+
+        {/* Digitação Manual */}
+        <Route path="/digitar" element={
+          <PrivateRoute><PedidoManual /></PrivateRoute>
         } />
 
       </Routes>

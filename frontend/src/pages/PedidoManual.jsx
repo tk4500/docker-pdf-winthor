@@ -9,9 +9,8 @@ export default function PedidoManual() {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   
-  // Estado Principal do Pedido Manual
   const [pedido, setPedido] = useState({
-    numero_pedido: "", // <-- Adicionado aqui!
+    numero_pedido: "",
     cliente: null,
     itens: [],
     options: {
@@ -22,6 +21,10 @@ export default function PedidoManual() {
 
   const handleClientSelect = (cliWinthor) => {
     setPedido({ ...pedido, cliente: cliWinthor });
+    // Se não tiver itens, cria o primeiro e foca nele automaticamente
+    if (pedido.itens.length === 0) {
+      setTimeout(addNewItem, 100);
+    }
   };
 
   const addNewItem = () => {
@@ -39,7 +42,7 @@ export default function PedidoManual() {
       loadingPrice: false
     };
 
-    setPedido({ ...pedido, itens: [...pedido.itens, newItem] });
+    setPedido((prev) => ({ ...prev, itens: [...prev.itens, newItem] }));
   };
 
   const removeItem = (index) => {
@@ -73,16 +76,32 @@ export default function PedidoManual() {
 
       if (data.encontrado) {
         novosItens[index].valor_unitario = parseFloat(data.preco).toFixed(2);
-        
         const qtd = parseFloat(novosItens[index].quantidade) || 0;
         novosItens[index].valor_total = (qtd * parseFloat(data.preco)).toFixed(2);
       }
     } catch (error) {
       console.error("Erro ao buscar preço:", error);
-      alert("Não foi possível buscar o preço padrão. Digite manualmente.");
     } finally {
       novosItens[index].loadingPrice = false;
       setPedido({ ...pedido, itens: [...novosItens] });
+    }
+  };
+
+  // --- LOGICA DE DIGITAÇÃO RÁPIDA (ENTER) ---
+  const handleQtdKeyDown = (e, idx) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // Pula para o campo Preço da mesma linha
+      document.getElementById(`val-input-${idx}`)?.focus();
+      document.getElementById(`val-input-${idx}`)?.select();
+    }
+  };
+
+  const handleValKeyDown = (e, idx) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // Cria a nova linha (que receberá foco automático na pesquisa)
+      addNewItem();
     }
   };
 
@@ -90,18 +109,17 @@ export default function PedidoManual() {
     if (!pedido.cliente) return alert("Selecione o Cliente.");
     if (pedido.itens.length === 0) return alert("Adicione pelo menos um produto.");
     
-    const hasEmptyProduct = pedido.itens.some(i => !i.produto);
-    if (hasEmptyProduct) return alert("Você tem linhas em branco. Selecione um produto ou remova a linha.");
+    // Remove as linhas em branco automaticamente antes de enviar (melhor UX)
+    const itensValidos = pedido.itens.filter(i => i.produto);
+    if (itensValidos.length === 0) return alert("Nenhum produto válido na tabela.");
 
     setSaving(true);
     try {
-      // O Payload foi atualizado para enviar o numero_pedido!
-      // (Certifique-se que no backend 'schemas.py -> PedidoCreateManual' aceita isso)
       const payload = {
         numero_pedido: pedido.numero_pedido,
         cliente_id: pedido.cliente.id,
         options: pedido.options,
-        itens: pedido.itens.map(i => ({
+        itens: itensValidos.map(i => ({
           id_produto: i.produto.id,
           quantidade: parseFloat(i.quantidade),
           valor: parseFloat(i.valor_unitario)
@@ -109,10 +127,8 @@ export default function PedidoManual() {
       };
 
       const { data } = await api.post('/pedidos/manual', payload);
-      
-      alert("Pedido Manual gerado e enviado para validação com sucesso!");
+      alert("Pedido Manual gerado com sucesso!");
       navigate(`/pedido/${data.job_id}`);
-      
     } catch (error) {
       alert("Erro ao enviar pedido manual: " + (error.response?.data?.detail || error.message));
     } finally {
@@ -124,6 +140,7 @@ export default function PedidoManual() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* CABEÇALHO (Igual ao anterior) */}
       <div className="flex justify-between items-center mb-6">
         <button onClick={() => navigate('/')} className="flex items-center text-gray-600 hover:text-blue-600 font-medium">
           <ArrowLeft className="w-5 h-5 mr-1" /> Voltar
@@ -140,12 +157,9 @@ export default function PedidoManual() {
         </button>
       </div>
 
-      {/* 1. Seleção do Cliente e Cabeçalho */}
       <div className="bg-white p-6 rounded-lg shadow mb-6 border-t-4 border-blue-600">
         <h3 className="text-lg font-bold text-gray-800 mb-4">1. Informações do Pedido</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          
-          {/* NÚMERO DO PEDIDO ADICIONADO AQUI */}
           <div className="md:col-span-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">Número do Pedido</label>
             <input 
@@ -156,12 +170,10 @@ export default function PedidoManual() {
               className="w-full border border-gray-300 rounded p-2 focus:ring-blue-500 outline-none"
             />
           </div>
-
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Buscar Cliente (CNPJ, Razão ou ID)</label>
             <ClientSearch onSelect={handleClientSelect} />
           </div>
-
           <div className="flex flex-col justify-end pb-2">
             <label className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded border border-gray-200">
               <input 
@@ -174,7 +186,6 @@ export default function PedidoManual() {
             </label>
           </div>
         </div>
-
         {pedido.cliente && (
           <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded text-sm text-blue-800 flex justify-between">
             <span><strong>Selecionado:</strong> {pedido.cliente.id} - {pedido.cliente.razao_social}</span>
@@ -183,14 +194,12 @@ export default function PedidoManual() {
         )}
       </div>
 
-      {/* 2. Tabela de Produtos */}
       <div className={`bg-white shadow rounded-lg transition-opacity ${!pedido.cliente ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className="p-4 bg-gray-50 border-b flex justify-between items-center rounded-t-lg">
           <h3 className="text-lg font-bold text-gray-800">2. Itens do Pedido</h3>
           <span className="font-bold text-xl text-green-700">Total: R$ {totalPedido.toFixed(2)}</span>
         </div>
 
-        {/* Adicionado overflow-visible aqui e nas TRs/TDs para o Dropdown flutuar */}
         <div className="overflow-visible w-full pb-20"> 
           <table className="min-w-full divide-y divide-gray-200 border-b">
             <thead className="bg-gray-100">
@@ -206,42 +215,53 @@ export default function PedidoManual() {
               {pedido.itens.length === 0 && (
                 <tr>
                   <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
-                    Nenhum produto adicionado. Clique abaixo para incluir.
+                    Nenhum produto. Selecione um cliente para começar!
                   </td>
                 </tr>
               )}
               
               {pedido.itens.map((item, idx) => (
-                <tr key={item.id} className="hover:bg-gray-50 relative"> {/* relative aqui ajuda no dropdown */}
-                  <td className="px-4 py-3 overflow-visible"> {/* overflow-visible na td também */}
+                <tr key={item.id} className="hover:bg-gray-50 relative">
+                  <td className="px-4 py-3 overflow-visible">
                     {item.produto ? (
                       <div className="font-medium text-gray-900 text-sm">
                         {item.produto.id} - {item.produto.nome}
                         <span className="block text-xs text-gray-500">EAN: {item.produto.ean || 'N/A'}</span>
                       </div>
                     ) : (
-                      <ProductSearch onSelect={(prod) => handleProductSelect(idx, prod)} />
+                      // AQUI PASSAMOS O rowIndex e autoFocus = true
+                      <ProductSearch 
+                        autoFocus={true} 
+                        rowIndex={idx} 
+                        onSelect={(prod) => handleProductSelect(idx, prod)} 
+                      />
                     )}
                   </td>
                   <td className="px-4 py-3 text-right align-top">
+                    {/* ID e handleQtdKeyDown adicionados */}
                     <input 
+                      id={`qtd-input-${idx}`}
                       type="number" 
                       min="1"
-                      className="w-20 border border-gray-300 rounded p-1 text-right focus:ring-blue-500 text-sm outline-none"
+                      className="w-20 border border-gray-300 rounded p-1 text-right focus:ring-blue-500 focus:border-blue-500 text-sm outline-none"
                       value={item.quantidade}
                       onChange={(e) => updateItemValue(idx, 'quantidade', e.target.value)}
+                      onKeyDown={(e) => handleQtdKeyDown(e, idx)}
                       disabled={!item.produto}
                     />
                   </td>
                   <td className="px-4 py-3 text-right align-top">
                     <div className="relative">
+                      {/* ID e handleValKeyDown adicionados */}
                       <input 
+                        id={`val-input-${idx}`}
                         type="number" 
                         step="0.01"
-                        className="w-24 border border-gray-300 rounded p-1 text-right focus:ring-blue-500 text-sm outline-none"
+                        className="w-24 border border-gray-300 rounded p-1 text-right focus:ring-blue-500 focus:border-blue-500 text-sm outline-none"
                         value={item.valor_unitario}
                         onChange={(e) => updateItemValue(idx, 'valor_unitario', e.target.value)}
-                        disabled={!item.produto || item.loadingPrice}
+                        onKeyDown={(e) => handleValKeyDown(e, idx)}
+                        disabled={!item.produto} // Removi o disabled={item.loadingPrice} pra não tirar o foco do usuário
                       />
                       {item.loadingPrice && <span className="absolute -left-6 top-2 text-xs text-blue-500 animate-pulse">Buscando...</span>}
                     </div>
@@ -264,13 +284,12 @@ export default function PedidoManual() {
           </table>
         </div>
 
-        {/* Botão Adicionar Produto */}
         <div className="bg-gray-50 border-t border-gray-200 p-4 rounded-b-lg">
           <button 
             onClick={addNewItem}
             className="flex items-center text-sm text-blue-600 font-bold hover:text-blue-800 transition-colors"
           >
-            <Plus className="w-4 h-4 mr-1" /> Adicionar Produto
+            <Plus className="w-4 h-4 mr-1" /> Adicionar Produto (Manual)
           </button>
         </div>
       </div>

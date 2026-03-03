@@ -21,7 +21,8 @@ export default function ClientSearch({ onSelect, initialValue }) {
 
     setLoading(true);
     try {
-      const { data } = await api.get(`/clientes/busca?termo=${encodeURI(termo)}`);
+
+      const { data } = await api.get(`/clientes/busca?termo=${termo.replaceAll("%", "%25")}`);
       setResults(data);
       setShowDropdown(true);
     } catch (error) {

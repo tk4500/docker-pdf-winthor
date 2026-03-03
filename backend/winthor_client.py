@@ -770,10 +770,11 @@ class WinthorClient:
             if original:
                 item_payload["realCost"] = round(float(original), 8)
                 discount = (preco_final - float(original)) * 100 / float(original)  if float(original) > 0 else 0
+                discountValue = float(original) - preco_final
                 if abs(discount) > 5:  # Loga desconto se for significativo
                     logger.info(f"Desconto significativo no item {id_final}: {discount:.2f}%")
                     logger.info(f"Preço original: {original:.2f}, Preço final: {preco_final:.2f}")
-                item_payload["discountValue"] = round(discount, 6)
+                item_payload["discountValue"] = round(discountValue, 6)
             itens_winthor.append(item_payload)
             seq += 1
             

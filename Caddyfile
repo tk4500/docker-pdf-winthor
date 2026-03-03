@@ -1,14 +1,32 @@
-# Substitua pelo seu domínio real
+# Substitua pelo seu domínio real (ex: tkplayer.run.place)
 tkplayer.run.place {
-    # Habilita compressão gzip para o site carregar rápido
     encode gzip
 
-    # 1. Rota da API: Tudo que começa com /api vai para o Backend
-    handle_path /api/* {
-        reverse_proxy backend:8000
+    # 1. Rotas da API e Documentação (FastAPI)
+    # Adicionamos /docs e /openapi.json para você acessar o Swagger
+    @api_routes {
+        path /api/* /docs /openapi.json
+    }
+    
+    handle @api_routes {
+        # Como o frontend agora chama /api/token, e o FastAPI espera /token,
+        # Nós removemos o /api antes de mandar pro backend (uri strip_prefix)
+        # MAS não removemos /docs ou /openapi.json
+        route /api/* {
+            uri strip_prefix /api
+            reverse_proxy backend:8000
+        }
+        
+        route /docs {
+            reverse_proxy backend:8000
+        }
+
+        route /openapi.json {
+            reverse_proxy backend:8000
+        }
     }
 
-    # 2. Rota do Frontend: Todo o resto vai para o Frontend
+    # 2. Todo o resto vai para o Frontend (React)
     handle /* {
         reverse_proxy frontend:80
     }

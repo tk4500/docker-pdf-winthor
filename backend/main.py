@@ -195,9 +195,10 @@ def list_configs(db: Session = Depends(get_db)):
 # ==============================================================================
 
 @app.get("/clientes/busca", tags=["Busca"], dependencies=[Depends(get_current_user)]) 
-def buscar_cliente(termo: str, db: Session = Depends(get_db)):
+def buscar_cliente(termo: str, ativo: bool = True, db: Session = Depends(get_db)):
     termo_busca = f"%{termo}%"
     return db.query(models.Cliente).filter(
+        models.Cliente.ativo == ativo,
         (models.Cliente.razao_social.ilike(termo_busca)) | 
         (cast(models.Cliente.cnpj_cpf, String).ilike(termo_busca))
     ).limit(20).all()
@@ -243,13 +244,13 @@ def salvar_cliente(cliente: schemas.ClienteUpdate, db: Session = Depends(get_db)
     return cliente_banco
 
 @app.get("/produtos/busca", tags=["Busca"], dependencies=[Depends(get_current_user)])
-def buscar_produto(termo: str, db: Session = Depends(get_db)):
+def buscar_produto(termo: str, ativo: bool = True, db: Session = Depends(get_db)):
     termo_busca = f"%{termo}%"
     filtros = [models.Produto.nome.ilike(termo_busca), models.Produto.ean.ilike(termo_busca)]
     if termo.isdigit():
         filtros.append(models.Produto.id == int(termo))
     
-    return db.query(models.Produto).filter(or_(*filtros)).limit(20).all()
+    return db.query(models.Produto).filter(models.Produto.ativo == ativo, or_(*filtros)).limit(20).all()
 
 # ==============================================================================
 # 4. PROCESSAMENTO DE PEDIDOS (FLUXO PRINCIPAL)
@@ -439,10 +440,14 @@ def list_jobs_filtered(
     query = db.query(models.ProcessamentoPedido)
     
     # Req 3: Segurança de Usuário
-    if user.role.name != "Administrador" and user.role.name != "Auditor":
+    if user.role.name not in ["Administrador", "Auditor"]:
         query = query.filter(models.ProcessamentoPedido.user_id == user.id)
+        logger.info(f"Filtrando pedidos apenas para o usuário: {user.username}")
+    else:
+        logger.info(f"Usuário {user.username} tem permissão de visão global.")
     
-    if filtro.status: query = query.filter(models.ProcessamentoPedido.status_global == filtro.status).order_by(models.ProcessamentoPedido.data_criacao.desc())
+    if filtro.status: 
+        query = query.filter(models.ProcessamentoPedido.status_global == filtro.status).order_by(models.ProcessamentoPedido.data_criacao.desc())
     
     # Filtra apenas pais ou filhos independentes (para não poluir a lista com o pai que splitou)
     # Opcional: mostrar tudo

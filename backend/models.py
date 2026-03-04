@@ -33,7 +33,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     email = Column(String)
     winthor_password = Column(String)
-    
+    ativo = Column(Boolean, default=True)
     # Agora o usuário aponta para uma Role
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
     role = relationship("Role", lazy="joined") # lazy="joined" carrega a role junto na query
@@ -56,6 +56,7 @@ class Cliente(Base):
     sellerId = Column(Integer) # Vendedor padrão no Winthor
     chargingId = Column(String) # ID de cobrança no Winthor
     regionId = Column(Integer) # Região do cliente (para regras de negócio específicas)
+    ativo = Column(Boolean, default=True)
     
     aliases = relationship("ProdutoAlias", back_populates="cliente")
 
@@ -65,6 +66,7 @@ class Produto(Base):
     nome = Column(String)
     ean = Column(String, index=True)
     unidade = Column(String)
+    ativo = Column(Boolean, default=True)
     
     aliases = relationship("ProdutoAlias", back_populates="produto")
 

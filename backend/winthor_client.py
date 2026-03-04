@@ -675,12 +675,16 @@ class WinthorClient:
                 if cliente_dados.get("chargingId")
                 else cliente_db.chargingId
             )
+            if pedido_validado.get("is_bonificacao"):
+                chargingId = "BNF"  # Req 8: Se for bonificação, força chargingId para "BNF"
         except Exception as e:
             logger.error(f"Erro ao determinar chargingId para cliente {id_cliente}: {e}")
             raise Exception("Não foi possível determinar chargingId para o cliente do pedido.")
         
         sellerId = cliente_db.sellerId if cliente_db.sellerId else 0
         plano_pag = cliente_db.plano_pag_padrao if cliente_db.plano_pag_padrao else 1
+        if pedido_validado.get("is_bonificacao"):
+            plano_pag = 8  # Req 8: Se for bonificação, força plano de pagamento para 8
 
         data_atual = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 

@@ -650,6 +650,7 @@ class WinthorClient:
         1. Conversão de Unidade (Unitário -> Caixa) via tabela ProdutoConversao.
         2. Atualização de EAN (Usa o que está no banco, ignora o do JSON).
         """
+        is_bonificacao = pedido_validado.get("options").get("is_bonificacao", False)
         try:
             if not self.token:
                 self.authenticate()
@@ -675,7 +676,7 @@ class WinthorClient:
                 if cliente_dados.get("chargingId")
                 else cliente_db.chargingId
             )
-            if pedido_validado.get("is_bonificacao"):
+            if is_bonificacao:
                 chargingId = "BNF"  # Req 8: Se for bonificação, força chargingId para "BNF"
         except Exception as e:
             logger.error(f"Erro ao determinar chargingId para cliente {id_cliente}: {e}")
@@ -683,7 +684,7 @@ class WinthorClient:
         
         sellerId = cliente_db.sellerId if cliente_db.sellerId else 0
         plano_pag = cliente_db.plano_pag_padrao if cliente_db.plano_pag_padrao else 1
-        if pedido_validado.get("is_bonificacao"):
+        if is_bonificacao:
             plano_pag = 8  # Req 8: Se for bonificação, força plano de pagamento para 8
 
         data_atual = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
@@ -795,7 +796,7 @@ class WinthorClient:
 
         # 3. Montar Payload Final
         sale_type = (
-            5 if pedido_validado.get("is_bonificacao") else 1
+            5 if is_bonificacao else 1
         )  # Req 8: Bonificação
         
         unique_id = "".join(c for c in pedido_validado.get('numero_pedido') if c.isdigit())

@@ -243,6 +243,20 @@ def salvar_cliente(cliente: schemas.ClienteUpdate, db: Session = Depends(get_db)
 
     return cliente_banco
 
+@app.put("/produtos/{produto_id}", tags=["Admin"], dependencies=[Depends(PermissionChecker("config:edit"))])
+def atualizar_produto(produto_id: int, dados: schemas.ProdutoUpdate, db: Session = Depends(get_db)):
+    produto = db.query(models.Produto).filter(models.Produto.id == produto_id).first()
+    if not produto:
+        raise HTTPException(status_code=404, detail="Produto não encontrado")
+    
+    if dados.nome is not None: produto.nome = dados.nome
+    if dados.ean is not None: produto.ean = dados.ean
+    if dados.unidade is not None: produto.unidade = dados.unidade
+    if dados.ativo is not None: produto.ativo = dados.ativo
+    
+    db.commit()
+    return {"msg": "Produto atualizado com sucesso", "id": produto.id}
+
 @app.get("/produtos/busca", tags=["Busca"], dependencies=[Depends(get_current_user)])
 def buscar_produto(termo: str, ativo: bool = True, db: Session = Depends(get_db)):
     termo_busca = f"%{termo}%"

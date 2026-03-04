@@ -15,6 +15,12 @@ class UserCreate(BaseModel):
     email: Optional[str] = None
     role: str = "operador"
     
+class ProdutoUpdate(BaseModel):
+    nome: Optional[str] = None
+    ean: Optional[str] = None
+    unidade: Optional[str] = None
+    ativo: Optional[bool] = None
+    
 class PrecoRequest(BaseModel):
     cliente_id: int
     produto_id: int

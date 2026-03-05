@@ -19,6 +19,8 @@ class LLMService:
 
         # Lista de Prioridade de Modelos (Do melhor/mais novo para o fallback)
         self.models = [
+            "gemini-3.1-flash-lite",
+            "gemini-3-flash",
             "gemini-3-flash-preview",
             "gemini-2.5-flash",
             "gemini-2.5-flash-lite",
@@ -179,7 +181,7 @@ class LLMService:
         
         # Chamada ao modelo (ex: Gemini)
         response = self.apiCall(prompt, generate_config)
-        return response.text.replace("```python", "").replace("```", "").strip()
+        return response.replace("```python", "").replace("```", "").strip()
         
     def apiCall(self, prompt:str, config: types.GenerateContentConfig)-> str:
         last_error = None

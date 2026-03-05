@@ -219,6 +219,11 @@ class LLMService:
                     logger.warning(
                         f"Falha com modelo {model} e chave ...{api_key[-4:]}: {e}"
                     )
+                    status_code = getattr(e, 'code', 500)
+                    if status_code == 503:
+                        break  # Erro de serviço, tenta próximo modelo imediatamente
+                    if status_code == 429:
+                        continue  # Limite de taxa, tenta próxima chave para o mesmo modelo
                     last_error = e
                     continue  # Tenta próxima chave
 

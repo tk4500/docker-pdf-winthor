@@ -4,7 +4,7 @@ from urllib import response
 import requests
 import logging
 from sqlalchemy.orm import Session
-from models import Configuracao, Cliente, Produto, ProdutoConversao
+from models import Configuracao, Cliente, Produto, ProdutoConversao, SyncLog
 import os
 from datetime import datetime
 
@@ -244,6 +244,9 @@ class WinthorClient:
             return str(e)
 
     def sync_clientes(self):
+        log_cli = SyncLog(tabela='clientes', status='PROCESSANDO')
+        self.db.add(log_cli)
+        self.db.commit()
         if not self.token:
             self.authenticate()
 
@@ -339,10 +342,17 @@ class WinthorClient:
                 logger.error(f"Erro fatal sync clientes pg {page}: {e}")
                 self.db.rollback()
                 break
-
+            
+        log_cli.status = 'SUCESSO'
+        log_cli.total_registros = total_upserted
+        log_cli.data_fim = datetime.utcnow()
+        self.db.commit()
         return {"status": "sucesso", "total_processado": total_upserted}
 
     def sync_produtos(self):
+        log_prod = SyncLog(tabela='produtos', status='PROCESSANDO')
+        self.db.add(log_prod)
+        self.db.commit()
         if not self.token:
             self.authenticate()
 
@@ -426,7 +436,10 @@ class WinthorClient:
                 logger.error(f"Erro fatal sync produtos: {e}")
                 self.db.rollback()
                 break
-
+        log_prod.status = 'SUCESSO'
+        log_prod.total_registros = total_upserted
+        log_prod.data_fim = datetime.utcnow()
+        self.db.commit()
         return {"status": "sucesso", "total_processado": total_upserted}
 
     def importar_pedidos_por_ids(self, lista_ids: list):

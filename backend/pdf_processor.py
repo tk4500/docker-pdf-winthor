@@ -1,3 +1,5 @@
+import re
+
 import pdfplumber
 import io
 import logging
@@ -33,6 +35,8 @@ class PDFProcessor:
                     else:
                         logger.warning(f"Página {i+1} retornou vazio. Pode ser imagem.")
                         full_text += f"\n=== PÁGINA {i+1} (SEM TEXTO DETECTADO) ===\n"
+                pattern = r'(\d{2}\.\d{3}\.\d{3}/\d{4}-)\s*\n\s*(\d{2})'
+                full_text = re.sub(pattern, r'\1\2', full_text)
 
             return {"text": full_text, "pages": page_count}
 

@@ -209,13 +209,14 @@ class LLMService:
                     try:
                         if model == "gemma-3-27b-it":
                             return response.candidates[0].content.parts[0].text
+                        
                     except:
                         if hasattr(response, 'parsed'):
                             if response.parsed != None:
                                 return json.dumps(response.parsed)
                             else:
                                 return response.candidates[0].content.parts[0].text
-                        return response.text
+                    return response.text
 
                 except Exception as e:
                     logger.warning(

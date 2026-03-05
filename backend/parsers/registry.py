@@ -1,7 +1,7 @@
 import logging
 import re
 from typing import List, Optional
-from moniari import TemplateMoniariParser
+import moniari
 
 logger = logging.getLogger("ParserFactory")
 # Interface Base (Protocolo)
@@ -36,7 +36,7 @@ class ParserFactory:
     Valor = Classe do Parser
     """
     _registry = {
-        83814814: TemplateMoniariParser(),
+        83814814: moniari.TemplateMoniariParser(),
     }
 
     @staticmethod

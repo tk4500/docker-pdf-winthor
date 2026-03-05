@@ -179,7 +179,7 @@ class ParserFactory:
         """
         # Regex para extrair todos os CNPJs do texto
         # Remove pontuação para comparar
-        found_cnpjs = re.findall(r'\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}', text)
+        found_cnpjs = re.findall(r'\d{2}\.?\d{3}\.?\d{3}/?\d{4}', text)
         
         clean_cnpjs = [re.sub(r'\D', '', c) for c in found_cnpjs]
         logger.info(f"CNPJs encontrados no texto: {clean_cnpjs}")

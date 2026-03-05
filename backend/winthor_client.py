@@ -224,6 +224,24 @@ class WinthorClient:
                 logger.error(f"Erro ao buscar pedidos para cliente {cliente_id}: {e}")
         return 341  # Retorna ID de cobrança padrão se não encontrar nenhum pedido do cliente
 
+
+    def get_item_stock(self, produto_id: int) -> int:
+        if not self.token:
+            self.authenticate()
+        url = f"{self.base_url}/api/stock-vtex/v1/available/{self.branch_id}/{produto_id}"
+
+        try:
+            response = self.session.get(url)
+            if response.status_code == 401:
+                self.authenticate()
+                response = self.session.get(url)
+            response.raise_for_status()
+            data = response.json()
+            return data.get("quantity", 0)
+        except Exception as e:
+            logger.error(f"Erro ao buscar estoque do produto {produto_id}: {e}")
+            return 0
+    
     def get_cliente(self, cliente_id: int):
         if not self.token:
             self.authenticate()

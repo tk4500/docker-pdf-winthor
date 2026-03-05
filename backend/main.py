@@ -280,6 +280,14 @@ def buscar_produto(termo: str, ativo: bool = True, db: Session = Depends(get_db)
     
     return db.query(models.Produto).filter(models.Produto.ativo == ativo, or_(*filtros)).limit(20).all()
 
+@app.get("/produto/estoque/{produto_id}", tags=["Busca"], dependencies=[Depends(get_current_user)])
+def buscar_produto(produto_id: int,db: Session = Depends(get_db)):
+    client = WinthorClient(db)
+    
+    return client.get_item_stock(produto_id)
+
+
+
 # ==============================================================================
 # 4. PROCESSAMENTO DE PEDIDOS (FLUXO PRINCIPAL)
 # ==============================================================================

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Any
 from datetime import datetime
 
 # --- Autenticação & Usuários ---
@@ -80,3 +80,46 @@ class PedidoFinalInput(BaseModel):
     pedido: dict
     options: Optional[PedidoOptions] = None # Permite mudar flags na finalização
 
+class ItemPedidoStandard(BaseModel):
+    id: Optional[int] = None
+    barCode: Optional[str] = None
+    descricao: str
+    cod_cliente: Optional[str] = None
+    quantidade: float
+    valor_unitario: float
+    valor_total: float
+    valor_total_calculado: float
+    estoque_atual: Optional[float] = 0.0
+    status_item: str = "OK" # OK, NAO_ENCONTRADO, ERRO
+    mensagens: List[str] = []
+
+class ClienteStandard(BaseModel):
+    id: Optional[int] = None
+    cnpj: Optional[str] = None
+    razao_social: Optional[str] = None
+
+class ResultadoJsonStandard(BaseModel):
+    numero_pedido: str = ""
+    customer: ClienteStandard
+    items: List[ItemPedidoStandard]
+    totais: dict = {"pdf": 0.0, "calculado": 0.0}
+    retorno_winthor: Optional[dict] = None
+
+class PedidoStandardized(BaseModel):
+    id: str
+    status_global: str
+    job_pai_id: Optional[str] = None
+    data_criacao: datetime
+    data_finalizacao: Optional[datetime] = None
+    nome_arquivo: str
+    origem_entrada: str
+    is_bonificacao: bool
+    auto_process: bool
+    force_ai: bool
+    winthor_order_id: Optional[str] = None
+    mensagem_erro: Optional[str] = None
+    # Resultado_json pode ser a estrutura acima OU uma lista de IDs (strings)
+    resultado_json: Any 
+
+    class Config:
+        from_attributes = True

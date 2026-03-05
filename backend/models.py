@@ -82,15 +82,6 @@ class ProdutoAlias(Base):
     cliente = relationship("Cliente", back_populates="aliases")
     produto = relationship("Produto", back_populates="aliases")
 
-class HistoricoPedido(Base):
-    __tablename__ = 'historico_pedidos'
-    id = Column(Integer, primary_key=True, index=True)
-    data_upload = Column(DateTime, default=datetime.utcnow)
-    nome_arquivo = Column(String)
-    json_entrada = Column(JSON)
-    json_final = Column(JSON)
-    status = Column(String)
-
 class ProcessamentoPedido(Base):
     __tablename__ = 'processamentos'
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))

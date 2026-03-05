@@ -209,7 +209,7 @@ class LLMService:
                     try:
                         if model == "gemma-3-27b-it":
                             return response.candidates[0].content.parts[0].text
-                        
+                        return response.text
                     except:
                         if hasattr(response, 'parsed'):
                             if response.parsed != None:

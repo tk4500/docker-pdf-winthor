@@ -663,7 +663,11 @@ class WinthorClient:
         1. Conversão de Unidade (Unitário -> Caixa) via tabela ProdutoConversao.
         2. Atualização de EAN (Usa o que está no banco, ignora o do JSON).
         """
-        is_bonificacao = pedido_validado.get("options").get("is_bonificacao", False)
+        options = pedido_validado.get("options", {})
+        if options:
+            is_bonificacao = options.get("is_bonificacao", False)
+        else:
+            is_bonificacao = False
         try:
             if not self.token:
                 self.authenticate()

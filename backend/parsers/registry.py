@@ -52,8 +52,7 @@ class TemplateMoniariParser(BaseParser):
             # It starts with a product code (5 digits), then description, UN, Emb, Qtde, Price, Total Price.
             # The EAN is on the next line, sometimes with "Ref:" or "UN 1".
             product_pattern = re.compile(
-                r"^\\s*(\\d{1,5})\\s+(.*?)\\s+(UN|CX)\\s+(\\d+)\\s+(\\d+)\\s+([\\d,.]+)\\s+([\\d,.]+)\\s+[\\d,.]+\\s+[\\d,.]+\\s+([\\d,.]+)\\s+[\\d,.]+\\s+[\\d,.]+\\s*\
-" # Main product line
+                r"^\\s*(\\d{1,5})\\s+(.*?)\\s+(UN|CX)\\s+(\\d+)\\s+(\\d+)\\s+([\\d,.]+)\\s+([\\d,.]+)\\s+[\\d,.]+\\s+[\\d,.]+\\s+([\\d,.]+)\\s+[\\d,.]+\\s+[\\d,.]+\\s*\\n" # Main product line
                 r"(?:Ref:\\s*.*?)?\\s*EAN:\\s*(\\d+)\\s*.*?$", # EAN line
                 re.MULTILINE
             )

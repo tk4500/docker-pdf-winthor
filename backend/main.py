@@ -1,3 +1,4 @@
+import asyncio
 from typing import List
 import logging
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, BackgroundTasks
@@ -30,6 +31,8 @@ from llm_service import LLMService
 from parsers.registry import ParserFactory
 from learning_service import aprender_aliases
 from background_jobs import processar_arquivo_background, job_enriquecer_produtos, MAX_PAGES_FOR_AI
+from scheduler import task_sincronizacao_madrugada
+
 
 # Inicialização
 models.Base.metadata.create_all(bind=engine)
@@ -46,7 +49,11 @@ logging.basicConfig(level=logging.INFO)
 # ==============================================================================
 # 1. AUTENTICAÇÃO E SETUP
 # ==============================================================================
-
+@app.on_event("startup")
+async def startup_event():
+    # Dispara a tarefa em background sem travar a API
+    asyncio.create_task(task_sincronizacao_madrugada())
+    
 @app.get("/", tags=["Health"])
 def root():
     return {"message": "API Winthor PDF Parser está rodando."}
@@ -150,6 +157,14 @@ def create_role(role_data: schemas.RoleCreate, db: Session = Depends(get_db)):
     db.add(new_role)
     db.commit()
     return {"msg": f"Role {new_role.name} criada."}
+
+# backend/main.py
+
+@app.get("/sync/status", tags=["Sync"])
+def get_sync_status(db: Session = Depends(get_db)):
+    # Pega o último log de cada tabela
+    syncs = db.query(models.SyncLog).order_by(models.SyncLog.data_inicio.desc()).limit(5).all()
+    return syncs
 
 @app.get("/admin/permissions", tags=["Admin"], dependencies=[Depends(PermissionChecker("users:manage"))])
 def list_permissions(db: Session = Depends(get_db)):

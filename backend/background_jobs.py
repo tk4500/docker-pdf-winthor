@@ -110,17 +110,6 @@ def finalizar_envio_winthor(job_id: str, db: Session, pedido_manual: dict = None
 def processar_arquivo_background(job_id: str, file_content: bytes, filename: str, db: Session, user: models.User = None):
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job: return
-    try:
-        novo_arquivo = models.ArquivoPedido(
-            job_id=job.id,
-            conteudo = file_content,
-            nome_arquivo = filename,
-            extensao = filename.split(".")[-1] if "." in filename else ""
-        )
-        db.add(novo_arquivo)
-        db.commit()
-    except Exception as e:
-        logger.error(f"Erro ao salvar arquivo para job {job.id}: {e}")
 
     try:
         # 1. Extração
@@ -130,6 +119,16 @@ def processar_arquivo_background(job_id: str, file_content: bytes, filename: str
         processor = PDFProcessor()
         extraction = processor.extract_text_optimized(file_content)
         texto = extraction["text"]
+        
+        novo_arquivo = models.ArquivoPedido(
+            job_id=job.id,
+            conteudo = file_content,
+            nome_arquivo = filename,
+            texto_extraido = texto,
+            extensao = filename.split(".")[-1] if "." in filename else ""
+        )
+        db.add(novo_arquivo)
+        db.commit()
 
         # 2. Parse (Template ou IA)
         job.status_global = "INTERPRETANDO_DADOS"

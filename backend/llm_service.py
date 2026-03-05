@@ -90,6 +90,22 @@ class LLMService:
         return types.ToolConfig(
             function_calling_config=types.FunctionCallingConfig(mode="NONE")
         )
+        
+    def _get_safety_settings(self):
+        return [
+            types.SafetySetting(
+                category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"
+            ),
+            types.SafetySetting(
+                category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"
+            ),
+            types.SafetySetting(
+                category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"
+            ),
+            types.SafetySetting(
+                category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"
+            ),
+        ]
 
     def parse_pedido_text(self, text_content: str) -> dict:
         """
@@ -114,27 +130,59 @@ class LLMService:
         """
 
         # Configurações de Segurança (Permitir tudo, pois é processamento de dados)
-        safety_settings = [
-            types.SafetySetting(
-                category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"
-            ),
-            types.SafetySetting(
-                category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"
-            ),
-            types.SafetySetting(
-                category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"
-            ),
-            types.SafetySetting(
-                category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"
-            ),
-        ]
         
-        thinking_config = types.ThinkingConfig(
-            thinking_budget=0,
-        )
         # --- Lógica de Rotação ---
-        last_error = None
+        
+        
+        generate_config = types.GenerateContentConfig(
+                        temperature=0.1,
+                        thinking_config=types.ThinkingConfig(
+            thinking_budget=0,
+        ),
+                        response_mime_type="application/json",
+                        response_schema=self._get_schema(),
+                        safety_settings=self._get_safety_settings(),
+                        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+                        tool_config=self._get_toolconfig()
+                    )
+        response = self.apiCall(prompt_text, generate_config)
+        json_text = response.replace("\n```json", "").replace("```", "").strip()
+        return json.loads(json_text)
+        
+    # backend/llm_service.py
 
+    def gerar_codigo_parser(self, texto_exemplo: str, json_esperado: dict) -> str:
+        prompt = f"""
+        Você é um Engenheiro de Dados Python sênior.
+        Recebi um PDF de pedido com o seguinte texto extraído:
+        ---
+        {texto_exemplo}
+        ---
+        A IA converteu esse texto para o seguinte JSON:
+        {json.dumps(json_esperado, indent=2)}
+        
+        Tarefa: Escreva uma classe Python chamada 'CustomParser' que herda de 'BaseParser'.
+        Use a biblioteca 're' (regex) para extrair os dados EXATAMENTE como no JSON acima a partir do texto fornecido.
+        O objetivo é ter um parser fixo que não dependa de IA para este layout específico.
+        Retorne APENAS o código Python, sem explicações.
+        """
+        generate_config = types.GenerateContentConfig(
+                        temperature=0.1,
+                        thinking_config=types.ThinkingConfig(
+            thinking_budget=0,
+        ),
+                        response_mime_type="text/x-python",
+                        safety_settings=self._get_safety_settings(),
+                        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+                        tool_config=self._get_toolconfig()
+                    )
+        
+        # Chamada ao modelo (ex: Gemini)
+        response = self.apiCall(prompt, generate_config)
+        return response.text.replace("```python", "").replace("```", "").strip()
+        
+    def apiCall(self, prompt:str, config: types.GenerateContentConfig)-> str:
+        last_error = None
         for model in self.models:
             logger.info(f"Tentando modelo: {model}")
 
@@ -142,25 +190,13 @@ class LLMService:
                 try:
                     client = genai.Client(api_key=api_key)
                     
-                    response_type = "application/json"
                     if model == "gemma-3-27b-it":
-                        response_type = None
+                        config.response_type = None
 
-                    # Configuração da Geração
-                    generate_config = types.GenerateContentConfig(
-                        temperature=0.1,
-                        thinking_config=thinking_config,
-                        response_mime_type=response_type,
-                        response_schema=self._get_schema(),
-                        safety_settings=safety_settings,
-                        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
-                        tool_config=self._get_toolconfig()
-                    )
                     
-                        
                     # Chamada Síncrona (Stream=False é melhor para JSON parse)
                     response = client.models.generate_content(
-                        model=model, contents=prompt_text, config=generate_config
+                        model=model, contents=prompt, config=config
                     )
                     self.last_used_model = model
                     logger.info(response)
@@ -170,17 +206,14 @@ class LLMService:
                     # mas as vezes vem como string no .text
                     try:
                         if model == "gemma-3-27b-it":
-                            text = response.candidates[0].content.parts[0].text
-                            response.text = text.replace("\n```json", "").replace("```", "").strip()
-                        return json.loads(response.text)
+                            return response.candidates[0].content.parts[0].text
                     except:
                         if hasattr(response, 'parsed'):
                             if response.parsed != None:
-                                return response.parsed
+                                return json.dumps(response.parsed)
                             else:
-                                text = response.candidates[0].content.parts[0].text
-                                response.text = text.replace("\n```json", "").replace("```", "").strip()
-                        return json.loads(response.text)
+                                return response.candidates[0].content.parts[0].text
+                        return response.text
 
                 except Exception as e:
                     logger.warning(
@@ -193,7 +226,8 @@ class LLMService:
 
         # Se chegou aqui, falhou tudo
         logger.error("Todas as tentativas de LLM falharam.")
-        return {
+        json_fallback ={
             "error": "Falha crítica no processamento IA",
             "details": str(last_error),
         }
+        return json.dumps(json_fallback)

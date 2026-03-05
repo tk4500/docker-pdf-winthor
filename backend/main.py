@@ -1,12 +1,11 @@
 import asyncio
 from typing import List
 import logging
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, BackgroundTasks, Response, Form 
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import cast, String, or_
 from datetime import datetime, timedelta
-from fastapi import Form 
 # Imports Locais
 from validator_service import OrderValidator
 import hashlib
@@ -405,7 +404,55 @@ def cancelar_pedido(job_id: str, db: Session = Depends(get_db), user: models.Use
     
     db.commit()
     return {"msg": "Pedido cancelado"}
+@app.get("/pedidos/{job_id}/download", tags=["Arquivos"])
+def download_arquivo_original(job_id: str, db: Session = Depends(get_db)):
+    arq = db.query(models.ArquivoPedido).filter(models.ArquivoPedido.job_id == job_id).first()
+    if not arq: raise HTTPException(404, "Arquivo não encontrado")
+    
+    # Retorna o binário com o cabeçalho correto para o navegador baixar
+    return Response(
+        content=arq.conteudo,
+        media_type="application/pdf" if arq.extensao == "pdf" else "application/json",
+        headers={"Content-Disposition": f"attachment; filename={arq.nome_arquivo}"}
+    )
 
+
+# 2. Visualizar Texto Extraído
+@app.get("/pedidos/{job_id}/texto", tags=["Arquivos"])
+def ver_texto_extraido(job_id: str, db: Session = Depends(get_db)):
+    arq = db.query(models.ArquivoPedido).filter(models.ArquivoPedido.job_id == job_id).first()
+    if not arq: raise HTTPException(404, "Texto não encontrado")
+    return {"texto": arq.texto_extraido}
+
+# 3. REPROCESSAR PEDIDO (Usa o arquivo já salvo)
+@app.post("/pedidos/{job_id}/reprocessar", tags=["Processamento"])
+def reprocessar_pedido(
+    job_id: str, 
+    background_tasks: BackgroundTasks, 
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user)
+):
+    job = db.query(models.ProcessamentoPedido).filter(models.ProcessamentoPedido.id == job_id).first()
+    arq = db.query(models.ArquivoPedido).filter(models.ArquivoPedido.job_id == job_id).first()
+    
+    if not job or not arq: raise HTTPException(404, "Pedido ou arquivo não encontrado")
+    
+    # Reseta o status do job
+    job.status_global = "PENDENTE"
+    job.resultado_json = None
+    job.mensagem_erro = None
+    db.commit()
+    
+    # Chama o worker de background usando o conteúdo que já está no banco
+    background_tasks.add_task(
+        processar_arquivo_background, 
+        job.id, 
+        arq.conteudo, 
+        arq.nome_arquivo, 
+        db, 
+        user
+    )
+    return {"msg": "Reprocessamento iniciado"}
 
 @app.post("/pedidos/finalizar/{job_id}", tags=["Steps"], dependencies=[Depends(PermissionChecker("order:approve"))])
 def finalizar_pedido(
@@ -546,3 +593,14 @@ async def processar_pedido_sincrono(file: UploadFile = File(...)):
         
     llm = LLMService()
     return {"dados": llm.parse_pedido_text(texto), "metodo": f"IA_{llm.last_used_model}"}
+
+@app.post("/debug/generate-code", tags=["Debug"], dependencies=[Depends(get_current_admin)])
+async def debug_pdf_to_json(file: UploadFile = File(...)):
+    contents = await file.read()
+    processor = PDFProcessor()
+    texto_extraido = processor.extract_text_optimized(contents)
+    llm = LLMService()
+    json_gerado = llm.parse_pedido_text(texto_extraido["text"])
+    codigo_parser = llm.gerar_codigo_parser(texto_extraido["text"], json_gerado)
+    
+    return {"codigo": codigo_parser, "modelo": llm.last_used_model}

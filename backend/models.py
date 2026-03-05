@@ -157,5 +157,6 @@ class ArquivoPedido(Base):
     id = Column(Integer, primary_key=True)
     job_id = Column(String, ForeignKey('processamentos.id'))
     conteudo = Column(LargeBinary) # Armazena o PDF em formato binário
+    texto_extraido = Column(Text, nullable=True)
     nome_arquivo = Column(String)
     extensao = Column(String) # .pdf, .json

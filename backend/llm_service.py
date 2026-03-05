@@ -173,7 +173,7 @@ class LLMService:
                         thinking_config=types.ThinkingConfig(
             thinking_budget=0,
         ),
-                        response_mime_type="text/x-python",
+                        response_mime_type="text/plain",
                         safety_settings=self._get_safety_settings(),
                         automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
                         tool_config=self._get_toolconfig()
@@ -193,7 +193,7 @@ class LLMService:
                     client = genai.Client(api_key=api_key)
                     
                     if model == "gemma-3-27b-it":
-                        config.response_type = None
+                        config.response_type = "text/plain"
 
                     
                     # Chamada Síncrona (Stream=False é melhor para JSON parse)
@@ -222,7 +222,7 @@ class LLMService:
                         f"Falha com modelo {model} e chave ...{api_key[-4:]}: {e}"
                     )
                     status_code = getattr(e, 'code', 500)
-                    if status_code == 503:
+                    if status_code == 503 or status_code == 404:
                         break  # Erro de serviço, tenta próximo modelo imediatamente
                     if status_code == 429:
                         continue  # Limite de taxa, tenta próxima chave para o mesmo modelo

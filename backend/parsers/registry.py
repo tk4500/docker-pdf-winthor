@@ -1,6 +1,9 @@
+import logging
 import re
 from typing import List, Optional
+from moniari import TemplateMoniariParser
 
+logger = logging.getLogger("ParserFactory")
 # Interface Base (Protocolo)
 class BaseParser:
     def parse(self, text: str) -> dict:
@@ -23,6 +26,8 @@ class TemplateVencedorAtacadista(BaseParser):
                 }
             ]
         }
+        
+
 
 class ParserFactory:
     """
@@ -31,6 +36,7 @@ class ParserFactory:
     Valor = Classe do Parser
     """
     _registry = {
+        83814814: TemplateMoniariParser(),
     }
 
     @staticmethod
@@ -44,10 +50,12 @@ class ParserFactory:
         found_cnpjs = re.findall(r'\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}', text)
         
         clean_cnpjs = [re.sub(r'\D', '', c) for c in found_cnpjs]
+        logger.info(f"CNPJs encontrados no texto: {clean_cnpjs}")
         
         # Verifica se algum CNPJ encontrado tem registro
         for cnpj in clean_cnpjs:
-            if cnpj in ParserFactory._registry:
-                return ParserFactory._registry[cnpj]
+            cnpj_raiz = int(cnpj[:8]) # Usamos apenas a raiz para o registro
+            if cnpj_raiz in ParserFactory._registry:
+                return ParserFactory._registry[cnpj_raiz]
         
         return None

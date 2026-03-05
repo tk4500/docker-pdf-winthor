@@ -48,10 +48,10 @@ logging.basicConfig(level=logging.INFO)
 # ==============================================================================
 # 1. AUTENTICAÇÃO E SETUP
 # ==============================================================================
-@app.on_event("startup")
-async def startup_event():
+#@app.on_event("startup")
+#async def startup_event():
     # Dispara a tarefa em background sem travar a API
-    asyncio.create_task(task_sincronizacao_madrugada())
+ #   asyncio.create_task(task_sincronizacao_madrugada())
     
 @app.get("/", tags=["Health"])
 def root():

@@ -139,3 +139,23 @@ class ProdutoConversao(Base):
     # Relacionamentos para facilitar
     produto_origem = relationship("Produto", foreign_keys=[id_produto_origem])
     produto_destino = relationship("Produto", foreign_keys=[id_produto_destino])
+
+class SyncLog(Base):
+    """Item 6: Registra quando as tabelas do Winthor foram sincronizadas"""
+    __tablename__ = 'sync_logs'
+    id = Column(Integer, primary_key=True)
+    tabela = Column(String)  # 'clientes' ou 'produtos'
+    data_inicio = Column(DateTime, default=datetime.utcnow)
+    data_fim = Column(DateTime, nullable=True)
+    status = Column(String)  # 'SUCESSO', 'ERRO', 'PROCESSANDO'
+    total_registros = Column(Integer, default=0)
+    mensagem = Column(String, nullable=True)
+
+class ArquivoPedido(Base):
+    """Item 8: Armazena o conteúdo físico do arquivo enviado"""
+    __tablename__ = 'arquivos_pedidos'
+    id = Column(Integer, primary_key=True)
+    job_id = Column(String, ForeignKey('processamentos.id'))
+    conteudo = Column(LargeBinary) # Armazena o PDF em formato binário
+    nome_arquivo = Column(String)
+    extensao = Column(String) # .pdf, .json
